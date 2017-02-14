@@ -1,6 +1,6 @@
 use std::str;
 use syntax::error::Error;
-use syntax::ktree::{K, Verb, Monad, Dyad, Applience};
+use syntax::ktree::{K, Verb, Adverb, Monad, Dyad, Applience};
 use syntax::token::{Token, Raw};
 use regex::Regex;
 
@@ -13,7 +13,8 @@ pub struct Parser {
 impl Parser {
     fn begin(&mut self, s: &str) {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"(\x22(?:[^\x22\x5C\n]|\.)*\x22)|[a-zA-Z]*(/.*)|([a-z\d\]\)]-\.?\d)|.*").unwrap();
+            static ref RE: Regex = Regex::new(r"(\x22(?:[^\x22\x5C\n]|\.)*\x22)|[a-zA-Z]*(/.*)|([a-z\d\]\)]-\.?\d)|.*")
+                                   .unwrap();
         }
         // preserve a string, remove a comment, disambiguate a minus sign.
         self.text = RE.captures_iter(s.trim())
@@ -107,6 +108,28 @@ impl Parser {
         return Ok(r);
     }
 
+    fn parse_adverb(&mut self, left: K, mut verb: K) -> Result<K, Error> {
+        let mut a = try!(self.expect(Token::Adverb));
+        // while self.at(Token::Adverb) {
+        //     let b = try!(self.expect(Token::Adverb));
+        //     // here will be parsing adverb from Raw ..
+        //     verb = K::Verb {
+        //         verb: verb,
+        //         args: vec![verb],
+        //     };
+        //     a = b;
+        // }
+        // if (at(OPEN_B)) { return applycallright({ t:9, v:a, verb:verb, l:left }); }
+        let n = try!(self.parse_noun());
+        let r = try!(self.parse_ex(n));
+        return Ok(K::Adverb {
+            adverb: try!(Adverb::construct(a.value())),
+            verb: box verb,
+            left: box left,
+            right: box r,
+        });
+    }
+
     #[inline]
     fn native(&self, s: &String) -> Option<K> {
         self.natives.iter().find(|&x| *x.0 == *s).map(|ref x| x.1.clone())
@@ -153,7 +176,7 @@ impl Parser {
             // for now it's just creates Monadic verb.
             let v = match self.matches(Token::Colon) {
                 Some(..) => try!(Verb::construct(n.value(), Applience::Monadic)),
-                None => try!(Verb::construct(n.value(), Applience::Monadic)),
+                None => try!(Verb::construct(n.value(), Applience::Dyadic)),
             };
             //
             if self.at(Token::OpenB) && !self.at(Token::Dict) {
@@ -292,6 +315,9 @@ impl Parser {
     fn parse_ex(&mut self, node: K) -> Result<K, Error> {
         if node == K::Nil {
             return Ok(K::Nil);
+        }
+        if self.at(Token::Adverb) {
+            return self.parse_adverb(K::Nil, node);
         }
         if self.at_noun() {
             let n = try!(self.parse_noun());

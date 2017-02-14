@@ -83,6 +83,30 @@ impl Verb {
 }
 
 #[derive(Debug, Clone)]
+#[repr(u8)]
+pub enum Adverb {
+    Each,
+    OverJoin,
+    ScanSplit,
+    Eachprior,
+    Eachright,
+    Eachleft,
+}
+
+impl Adverb {
+    pub fn construct(s: &str) -> Result<Self, Error> {
+        lazy_static! {
+            static ref ADVERBS: Vec<String> = ["'", "/", "\\", "':", "\\:", "/:"]
+            .iter().map(|x| x.to_string()).collect();
+        }
+        match ADVERBS.iter().position(|ref x| *x == s) {
+            Some(x) => unsafe { Ok(mem::transmute(x as u8)) },
+            None => Err(Error::ParseError(format!("Can not construct Adverb from {}.", &s))),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum K {
     Name { value: String },
     Symbol { value: String },
@@ -93,6 +117,12 @@ pub enum K {
     List { values: Vec<K> },
     Dict { keys: Vec<K>, values: Vec<K> },
     Nameref { name: String, value: Box<K> },
+    Adverb {
+        adverb: Adverb,
+        left: Box<K>,
+        verb: Box<K>,
+        right: Box<K>,
+    },
     Nil,
 }
 
@@ -108,6 +138,7 @@ impl K {
             K::List { .. } => 6,
             K::Dict { .. } => 7,
             K::Nameref { .. } => 8,
+            K::Adverb { .. } => 9,
             K::Nil => 13,
         }
     }
