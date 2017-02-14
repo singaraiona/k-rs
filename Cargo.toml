@@ -1,0 +1,12 @@
+[package]
+name = "k"
+version = "0.1.0"
+authors = ["singaraiona <singaraiona@gmail.com>"]
+
+[[bin]]
+name="k"
+path="src/apps/repl.rs"
+
+[dependencies]
+lazy_static = "0.2.2"
+regex = "0.2"
