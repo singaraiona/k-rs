@@ -6,7 +6,7 @@ use regex::Regex;
 
 pub struct Parser {
     text: String,
-    funcdepth: u16,
+    // funcdepth: u16,
     natives: Vec<(String, K)>,
 }
 
@@ -200,7 +200,7 @@ impl Parser {
                 return self.applycallright(x);
             }
             if self.matches(Token::Colon).is_some() {
-                let global = self.matches(Token::Colon).is_some();
+                let _ = self.matches(Token::Colon).is_some();
                 let n = try!(self.parse_noun());
                 let r = try!(self.parse_ex(n));
                 if r == K::Nil {
@@ -296,28 +296,18 @@ impl Parser {
         if self.at_noun() {
             let n = try!(self.parse_noun());
             let p = try!(self.parse_ex(n));
-            return match node {
-                K::Verb { verb: verb, args: mut args } => {
-                    if args.is_empty() {
-                        Ok(K::Verb {
-                            verb: verb,
-                            args: vec![p],
-                        })
+            let (v, a) = match node {
+                K::Verb { verb: mut v, args: mut a } => {
+                    if a.is_empty() {
+                        a = vec![p];
                     } else {
-                        args.push(p);
-                        Ok(K::Verb {
-                            verb: Verb::Dyad(Dyad::At),
-                            args: args,
-                        })
+                        v = Verb::Dyad(Dyad::At);
                     }
+                    (v, a)
                 }
-                x => {
-                    Ok(K::Verb {
-                        verb: Verb::Dyad(Dyad::At),
-                        args: vec![x, p],
-                    })
-                }
+                x => (Verb::Dyad(Dyad::At), vec![x, p]),                
             };
+            return Ok(K::Verb { verb: v, args: a });
         }
         if self.at(Token::Verb) {
             let n = try!(self.expect(Token::Verb));
@@ -367,7 +357,7 @@ pub fn new() -> Parser {
                   }));
     Parser {
         text: String::new(),
-        funcdepth: 0,
+        // funcdepth: 0,
         natives: natives,
     }
 }
