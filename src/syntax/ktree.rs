@@ -51,7 +51,7 @@ pub enum Dyad {
 
 #[derive(Debug, Clone)]
 #[repr(u8)]
-pub enum Applience {
+pub enum Appliance {
     Monadic,
     Dyadic,
 }
@@ -65,7 +65,7 @@ pub enum Verb {
 }
 
 impl Verb {
-    pub fn construct(s: &str, a: Applience) -> Result<Self, Error> {
+    pub fn construct(s: &str, a: Appliance) -> Result<Self, Error> {
         lazy_static! {
             static ref VERBS: Vec<String> = "+\x2D*%!&|<>=~,^#_$?@."
             .chars().map(|x| x.to_string()).collect();
@@ -73,8 +73,8 @@ impl Verb {
         match VERBS.iter().position(|ref x| *x == s) {
             Some(x) => unsafe {
                 match a {                    
-                    Applience::Monadic => Ok(Verb::Monad(mem::transmute(x as u8))),
-                    Applience::Dyadic => Ok(Verb::Dyad(mem::transmute(x as u8))),
+                    Appliance::Monadic => Ok(Verb::Monad(mem::transmute(x as u8))),
+                    Appliance::Dyadic => Ok(Verb::Dyad(mem::transmute(x as u8))),
                 }
             },
             None => Err(Error::ParseError(format!("Can not construct Verb from {}.", &s))),

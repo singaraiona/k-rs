@@ -1,6 +1,6 @@
 use std::str;
 use syntax::error::Error;
-use syntax::ktree::{K, Verb, Adverb, Monad, Dyad, Applience};
+use syntax::ktree::{K, Verb, Adverb, Monad, Dyad, Appliance};
 use syntax::token::{Token, Raw};
 use regex::Regex;
 
@@ -108,8 +108,8 @@ impl Parser {
         return Ok(r);
     }
 
-    fn parse_adverb(&mut self, left: K, mut verb: K) -> Result<K, Error> {
-        let mut a = try!(self.expect(Token::Adverb));
+    fn parse_adverb(&mut self, left: K, verb: K) -> Result<K, Error> {
+        let a = try!(self.expect(Token::Adverb));
         // while self.at(Token::Adverb) {
         //     let b = try!(self.expect(Token::Adverb));
         //     // here will be parsing adverb from Raw ..
@@ -175,8 +175,8 @@ impl Parser {
             // here is unclear point,
             // for now it's just creates Monadic verb.
             let v = match self.matches(Token::Colon) {
-                Some(..) => try!(Verb::construct(n.value(), Applience::Monadic)),
-                None => try!(Verb::construct(n.value(), Applience::Dyadic)),
+                Some(..) => try!(Verb::construct(n.value(), Appliance::Monadic)),
+                None => try!(Verb::construct(n.value(), Appliance::Dyadic)),
             };
             //
             if self.at(Token::OpenB) && !self.at(Token::Dict) {
@@ -337,7 +337,7 @@ impl Parser {
         }
         if self.at(Token::Verb) {
             let n = try!(self.expect(Token::Verb));
-            let v = try!(Verb::construct(n.value(), Applience::Dyadic));
+            let v = try!(Verb::construct(n.value(), Appliance::Dyadic));
             if self.at(Token::Adverb) {
                 return self.parse_adverb(node,
                                          K::Verb {
