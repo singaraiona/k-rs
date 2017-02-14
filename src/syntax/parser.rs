@@ -337,9 +337,16 @@ impl Parser {
         }
         if self.at(Token::Verb) {
             let n = try!(self.expect(Token::Verb));
+            let v = try!(Verb::construct(n.value(), Applience::Dyadic));
+            if self.at(Token::Adverb) {
+                return self.parse_adverb(node,
+                                         K::Verb {
+                                             verb: v,
+                                             args: vec![],
+                                         });
+            }
             let x = try!(self.parse_noun());
             let r = try!(self.parse_ex(x));
-            let v = try!(Verb::construct(n.value(), Applience::Dyadic));
             return Ok(K::Verb {
                 verb: v,
                 args: vec![node, r],
