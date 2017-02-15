@@ -1,6 +1,7 @@
+#![feature(slice_patterns)]
 extern crate k;
 
-use k::syntax::parser;
+use k::parse::parser;
 use std::io::{self, Read, Write};
 use std::str;
 
@@ -18,9 +19,9 @@ fn main() {
     ps1();
     loop {
         let size = io::stdin().read(&mut input).expect("STDIN error.");
-        let ast = p.parse(&input[..size - 1]);
-        match ast {
-            Ok(x) => println!("{:#?}", x),
+        let k = p.parse(&input[..size - 1]);
+        match k {
+            Ok(n) => println!("{:#?}", n), 
             Err(e) => println!("Error: {:?}", e),
         }
         ps1();

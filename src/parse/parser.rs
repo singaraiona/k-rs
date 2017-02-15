@@ -1,7 +1,7 @@
 use std::str;
-use syntax::error::Error;
-use syntax::ktree::{K, Verb, Adverb, Monad, Dyad, Appliance};
-use syntax::token::{Token, Raw};
+use parse::error::Error;
+use parse::ktree::{self, K};
+use parse::token::{Token, Raw};
 use regex::Regex;
 
 pub struct Parser {
@@ -81,10 +81,7 @@ impl Parser {
         let mut ret = node;
         while self.matches(Token::OpenB).is_some() {
             let args = try!(self.parse_list(Some(Token::CloseB)));
-            ret = K::Verb {
-                verb: Verb::Dyad(Dyad::Dot),
-                args: vec![ret, args],
-            };
+            ret = ktree::verb(".", vec![ret, args]);
         }
         Ok(ret)
     }
@@ -100,10 +97,7 @@ impl Parser {
         let mut r = node;
         while self.matches(Token::OpenB).is_some() {
             let e = try!(self.parse_list(Some(Token::CloseB)));
-            r = K::Verb {
-                verb: Verb::Dyad(Dyad::Dot),
-                args: vec![r, e],
-            };
+            r = ktree::verb(".", vec![r, e]);
         }
         return Ok(r);
     }
@@ -114,20 +108,15 @@ impl Parser {
         //     let b = try!(self.expect(Token::Adverb));
         //     // here will be parsing adverb from Raw ..
         //     verb = K::Verb {
-        //         verb: verb,
+        //         kind: verb,
         //         args: vec![verb],
         //     };
         //     a = b;
         // }
-        // if (at(OPEN_B)) { return applycallright({ t:9, v:a, verb:verb, l:left }); }
+        // if (at(OPEN_B)) { return applycallright({ t:9, v:a, kind:verb, l:left }); }
         let n = try!(self.parse_noun());
-        let r = try!(self.parse_ex(n));
-        return Ok(K::Adverb {
-            adverb: try!(Adverb::construct(a.value())),
-            verb: box verb,
-            left: box left,
-            right: box r,
-        });
+        let right = try!(self.parse_ex(n));
+        return Ok(ktree::adverb(a.value(), box left, box verb, box right));
     }
 
     #[inline]
@@ -146,12 +135,7 @@ impl Parser {
         if self.at(Token::Ioverb) {
             let v = try!(self.expect(Token::Ioverb));
             return match v.value()[..1].parse::<u8>() {
-                Ok(x) => {
-                    Ok(K::Verb {
-                        verb: Verb::IoVerb(x),
-                        args: vec![],
-                    })
-                }
+                Ok(x) => Ok(K::Ioverb { fd: x }),
                 Err(_) => Err(Error::UnexpectedToken),
             };
         }
@@ -181,22 +165,16 @@ impl Parser {
             // here is unclear point,
             // for now it's just creates Monadic verb.
             let v = match self.matches(Token::Colon) {
-                Some(..) => try!(Verb::construct(n.value(), Appliance::Monadic)),
-                None => try!(Verb::construct(n.value(), Appliance::Dyadic)),
+                Some(..) => n.value(),
+                None => n.value(),
             };
             //
             if self.at(Token::OpenB) && !self.at(Token::Dict) {
                 let _ = try!(self.expect(Token::OpenB));
                 let r = try!(self.parse_list(Some(Token::CloseB)));
-                return Ok(K::Verb {
-                    verb: v,
-                    args: vec![r],
-                });
+                return Ok(ktree::verb(v, vec![r]));
             }
-            return Ok(K::Verb {
-                verb: v,
-                args: vec![],
-            });
+            return Ok(ktree::verb(v, vec![]));
         }
         if self.at(Token::Number) {
             let mut v: Vec<K> = Vec::new();
@@ -245,10 +223,7 @@ impl Parser {
                 // if (at(ASSIGN)) { return compoundassign(n, index); }
                 // if (matches(COLON)) { return indexedassign(n, index); }
                 // if (index.length == 0) { index = [NIL]; }
-                return Ok(K::Verb {
-                    verb: Verb::Dyad(Dyad::Dot),
-                    args: vec![K::Name { value: t }, index],
-                });
+                return Ok(ktree::verb(".", vec![K::Name { value: t }, index]));
             }
             return Ok(K::Name { value: t });
         }
@@ -315,7 +290,6 @@ impl Parser {
             let n = try!(self.parse_list(Some(Token::CloseP)));
             return Ok(n);
         }
-
         Ok(K::Nil)
     }
 
@@ -329,35 +303,26 @@ impl Parser {
         if self.at_noun() {
             let n = try!(self.parse_noun());
             let p = try!(self.parse_ex(n));
-            let (v, a) = match node {
-                K::Verb { verb: mut v, args: mut a } => {
+            return match node {
+                K::Verb { kind: v, args: a } => {
                     if a.is_empty() {
-                        a = vec![p];
+                        Ok(ktree::verb(&v[..], vec![p]))
                     } else {
-                        v = Verb::Dyad(Dyad::At);
+                        Ok(ktree::verb("@", a))
                     }
-                    (v, a)
                 }
-                x => (Verb::Dyad(Dyad::At), vec![x, p]),                
+                x => Ok(ktree::verb("@", vec![x, p])),
             };
-            return Ok(K::Verb { verb: v, args: a });
         }
         if self.at(Token::Verb) {
             let n = try!(self.expect(Token::Verb));
-            let v = try!(Verb::construct(n.value(), Appliance::Dyadic));
+            let v = n.value();
             if self.at(Token::Adverb) {
-                return self.parse_adverb(node,
-                                         K::Verb {
-                                             verb: v,
-                                             args: vec![],
-                                         });
+                return self.parse_adverb(node, ktree::verb(v, vec![]));
             }
             let x = try!(self.parse_noun());
             let r = try!(self.parse_ex(x));
-            return Ok(K::Verb {
-                verb: v,
-                args: vec![node, r],
-            });
+            return Ok(ktree::verb(v, vec![node, r]));
         }
         Ok(node)
     }
@@ -390,11 +355,7 @@ impl Parser {
 
 pub fn new() -> Parser {
     let mut natives = Vec::new();
-    natives.push(("first".to_string(),
-                  K::Verb {
-                      verb: Verb::Monad(Monad::First),
-                      args: vec![],
-                  }));
+    natives.push(("first".to_string(), ktree::verb("*", vec![])));
     Parser {
         text: String::new(),
         // funcdepth: 0,

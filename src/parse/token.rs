@@ -1,6 +1,6 @@
 use regex::Regex;
 use std::str::FromStr;
-use syntax::error::Error;
+use parse::error::Error;
 
 lazy_static! {
     // Tokens

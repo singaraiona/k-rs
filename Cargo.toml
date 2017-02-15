@@ -5,8 +5,9 @@ authors = ["singaraiona <singaraiona@gmail.com>"]
 
 [[bin]]
 name="k"
-path="src/apps/repl.rs"
+path="src/app/repl.rs"
 
 [dependencies]
 lazy_static = "0.2.2"
 regex = "0.2"
+itertools = "0.5.9"
