@@ -1,3 +1,4 @@
+use std::fmt::{self, Display};
 use syntax::error::Error;
 use std::mem;
 
@@ -82,6 +83,14 @@ impl Verb {
     }
 }
 
+impl Display for Verb {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            _ => write!(f, "+"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 #[repr(u8)]
 pub enum Adverb {
@@ -123,6 +132,7 @@ pub enum K {
         verb: Box<K>,
         right: Box<K>,
     },
+    Condition { list: Vec<K> },
     Nil,
 }
 
@@ -139,33 +149,78 @@ impl K {
             K::Dict { .. } => 7,
             K::Nameref { .. } => 8,
             K::Adverb { .. } => 9,
+            K::Condition { .. } => 10,
             K::Nil => 13,
         }
     }
 
-    pub fn find_names(&self, v: &mut Vec<String>) {
+    pub fn find_names(&self, v: &mut Vec<String>) -> usize {
         match *self {
-            K::Name { value: ref n } => v.push(n.clone()),
-            K::Verb { verb: _, args: ref x } => {
-                for i in x.iter() {
-                    i.find_names(v);
-                }
+            K::Name { value: ref n } => {
+                v.push(n.clone());
+                1
             }
-            K::Lambda { args: _, body: ref x } => {
-                x.find_names(v);
-            }
-            K::List { values: ref x } => {
-                for i in x.iter() {
-                    i.find_names(v);
-                }
-            }
-            _ => (),
+            K::Verb { verb: _, args: ref x } => x.iter().fold(0, |a, ref i| a + i.find_names(v)),
+            K::Condition { list: ref x } => x.iter().fold(0, |a, ref i| a + i.find_names(v)),
+            K::List { values: ref x } => x.iter().fold(0, |a, ref i| a + i.find_names(v)),
+            _ => 0,
         }
     }
 }
 
 impl PartialEq for K {
     fn eq(&self, other: &K) -> bool {
-        self.as_u8() == other.as_u8()
+        mem::discriminant(self) == mem::discriminant(&other)
+    }
+}
+
+impl Display for K {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            K::Name { value: ref v } => write!(f, "{}", v),
+            K::Symbol { value: ref v } => write!(f, "{}", v),
+            K::Verb { verb: ref v, args: ref a } => {
+                if a.len() > 0 {
+                    try!(write!(f, "{}", a[0]));
+                }
+                try!(write!(f, "{}", v));
+                for i in 1..a.len() - 1 {
+                    try!(write!(f, "{} ", a[i]));
+                }
+                write!(f, "{}", a[a.len() - 1])
+            }
+            K::Int { value: v } => write!(f, "{}", v),
+            K::Float { value: v } => write!(f, "{}", v),
+            K::Lambda { args: ref a, body: ref b } => {
+                try!(write!(f, "{{["));
+                for i in 0..a.len() - 1 {
+                    try!(write!(f, "{};", a[i]));
+                }
+                try!(write!(f, "{}]", a[a.len() - 1]));
+                write!(f, "{}}}", b)
+            }
+            K::List { values: ref v } => {
+                try!(write!(f, "("));
+                for i in 0..v.len() - 1 {
+                    try!(write!(f, "{};", v[i]));
+                }
+                write!(f, "{})", v[v.len() - 1])
+            }
+            K::Dict { keys: ref k, values: ref v } => {
+                try!(write!(f, "["));
+                for (key, val) in k.iter().zip(v.iter()) {
+                    try!(write!(f, "{}:{};", key, val))
+                }
+                write!(f, "]")
+            }
+            // Nameref { name: String, value: Box<K> },
+            // Adverb {
+            //     adverb: Adverb,
+            //     left: Box<K>,
+            //     verb: Box<K>,
+            //     right: Box<K>,
+            // },
+            _ => write!(f, "nyi"),
+        }
     }
 }

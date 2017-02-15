@@ -170,6 +170,12 @@ impl Parser {
                 Err(_) => Err(Error::ParseError(format!("Malformed byte string."))),
             };
         }
+        if self.matches(Token::Cond).is_some() {
+            return match try!(self.parse_list(Some(Token::CloseB))) {
+                K::List { values: v } => Ok(K::Condition { list: v }),
+                _ => Err(Error::InvalidCondition),
+            };
+        }
         if self.at(Token::Verb) {
             let n = try!(self.expect(Token::Verb));
             // here is unclear point,
@@ -309,6 +315,7 @@ impl Parser {
             let n = try!(self.parse_list(Some(Token::CloseP)));
             return Ok(n);
         }
+
         Ok(K::Nil)
     }
 
