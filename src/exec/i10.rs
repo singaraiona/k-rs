@@ -2,41 +2,51 @@ use parse::ktree::K;
 use parse::error::Error as ParseError;
 use exec::error::Error as ExecError;
 
-// fn add(x: &K, y: &K) -> Result<K, Error> {
-//     Ok(K::Int { value: 1 + 2 })
-// }
+fn add(left: &K, right: &K) -> Result<K, ExecError> {
+    match (left, right) {
+        (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a + b }),
+        (&K::List { values: ref a }, &K::Int { value: b }) => {
+            let mut r: Vec<K> = Vec::new();
+            for x in a.iter() {
+                r.push(try!(add(x, &K::Int { value: b })));
+            }
+            return Ok(K::List { values: r });
+        }
+        (&K::Int { value: a }, &K::List { values: ref b }) => {
+            let mut r: Vec<K> = Vec::new();
+            for x in b.iter() {
+                r.push(try!(add(x, &K::Int { value: a })));
+            }
+            return Ok(K::List { values: r });
+        }
+        (&K::List { values: ref a }, &K::List { values: ref b }) => {
+            if a.len() != b.len() {
+                return Err(ExecError::Length);
+            }
+            let mut r: Vec<K> = Vec::new();
+            for (x, y) in a.iter().zip(b.iter()) {
+                r.push(try!(add(x, y)));
+            }
+            return Ok(K::List { values: r });
+        }
+        _ => (),
+    };
+    Err(ExecError::Type)
+}
 
-// fn am(v: &str, x: &K) -> Result<K, Error> {
-//     Ok(K::Int { value: 6 })
-// }
-
-// fn ad(v: &str, x: &K, y: &K) -> Result<K, Error> {
-//     Ok(K::List { values: vec![x.clone(), y.clone()] })
-// }
-
-// fn at(v: &str, x: &K, y: &K, z: &K) -> Result<K, Error> {
-//     Ok(K::List { values: vec![x.clone(), y.clone(), z.clone()] })
-// }
-
-// macro_rules! call {
-//     ($f:expr,$i:ident) => (match &$i[..] {
-//         &[ref x] => am($f, x),
-//         &[ref x, ref y] => ad($f, x,y),
-//         &[ref x, ref y, ref z] => at($f, x,y,z),
-//         _ => Err(Error::Rank),
-//     })
-// }
-
-pub struct Interpreter {
-    }
-
-impl Interpreter {
-    pub fn new() -> Self {
-        Interpreter {}
-    }
-
-    pub fn run(&mut self, mut k: K) -> Result<K, ExecError> {
-
-        Ok(K::Nil)
-    }
+pub fn run(k: &K) -> Result<K, ExecError> {
+    match *k {
+        K::Verb { kind: ref k, args: ref a } => {
+            match &k[..] {
+                "+" => {
+                    let x = try!(run(&a[0]));
+                    let y = try!(run(&a[1]));
+                    return add(&x, &y);
+                }
+                _ => (),
+            };
+        }        
+        _ => return Ok(k.clone()),
+    };
+    Ok(K::Nil)
 }

@@ -2,9 +2,10 @@
 extern crate k;
 
 use k::parse::parser;
-use k::exec::i10::Interpreter;
+use k::exec::i10;
 use std::io::{self, Read, Write};
 use std::str;
+use std::ascii::AsciiExt;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -15,15 +16,7 @@ fn ps1() {
 
 fn main() {
     let mut p = parser::new();
-    let mut i = Interpreter::new();
     let mut input = vec![0u8; 256];
-
-    let v1 = [1, 2, 3, 4];
-    let v2 = 7;
-
-    let r = v1.iter().map(|x| x + v2);
-    println!("R: {:?}", r);
-
     println!("K\\ {}", VERSION);
     ps1();
     loop {
@@ -32,10 +25,12 @@ fn main() {
         match k {
             Ok(n) => {
                 println!("------ Parse ------ \n{:#?}", n);
-                let r = i.run(n);
-                println!("------ Run ------ \n{:?}", r);
+                match i10::run(&n) {
+                    Ok(x) => println!("------ Run ------ \n{}", x),
+                    Err(e) => println!("'{}", format!("{:?}", e).to_ascii_lowercase()),
+                }
             } 
-            Err(e) => println!("Error: {:?}", e),
+            Err(e) => println!("'{}", format!("{:?}", e).to_ascii_lowercase()),
         }
         ps1();
     }

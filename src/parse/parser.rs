@@ -8,7 +8,6 @@ use std::cell::UnsafeCell;
 
 pub struct Parser {
     text: String,
-    // funcdepth: u16,
     natives: Vec<(String, K)>,
 }
 
@@ -366,7 +365,6 @@ pub fn new() -> Parser {
     let mut natives = Vec::new();
     Parser {
         text: String::new(),
-        // funcdepth: 0,
         natives: natives,
     }
 }

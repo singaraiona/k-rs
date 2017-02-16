@@ -23,26 +23,6 @@ impl fmt::Debug for Closure {
     }
 }
 
-pub fn plus() -> Closure {
-    Closure::new(|x| {
-        println!("X: {:?}", x);
-        match x {
-            K::List { values: v } => {
-                match v[0] {
-                    K::Int { value: a } => {
-                        match v[1] {
-                            K::Int { value: b } => Ok(K::Int { value: a + b }),
-                            _ => unimplemented!(),
-                        }
-                    }
-                    _ => unimplemented!(),
-                }
-            }
-            _ => unimplemented!(),
-        }
-    })
-}
-
 #[derive(Debug, Clone)]
 pub enum K {
     Name { value: String },
@@ -64,21 +44,6 @@ pub enum K {
     Condition { list: Vec<K> },
     Call { f: Closure },
     Nil,
-}
-
-impl FnMut<(K,)> for K {
-    extern "rust-call" fn call_mut(&mut self, args: (K,)) -> Self::Output {
-        match *self {            
-            _ => Ok(K::Nil),
-        }
-    }
-}
-
-impl FnOnce<(K,)> for K {
-    type Output = Result<K, ExecError>;
-    extern "rust-call" fn call_once(mut self, args: (K,)) -> Self::Output {
-        self.call_mut(args)
-    }
 }
 
 impl K {

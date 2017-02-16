@@ -2,4 +2,6 @@
 pub enum Error {
     RuntimeError,
     Rank,
+    Type,
+    Length,
 }
