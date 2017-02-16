@@ -1,13 +1,22 @@
 use std::str;
 use parse::error::Error;
-use parse::ktree::{self, K};
+use parse::ktree::{self, K, Closure};
 use parse::token::{Token, Raw};
 use regex::Regex;
+use std::rc::Rc;
+use std::cell::UnsafeCell;
 
 pub struct Parser {
     text: String,
     // funcdepth: u16,
     natives: Vec<(String, K)>,
+}
+
+macro_rules! extract {
+    ($k:expr) => (match $k {
+        K::Int{value: v} => v,
+        _ => unimplemented!(),
+    })
 }
 
 impl Parser {
@@ -355,7 +364,6 @@ impl Parser {
 
 pub fn new() -> Parser {
     let mut natives = Vec::new();
-    natives.push(("first".to_string(), ktree::verb("*", vec![])));
     Parser {
         text: String::new(),
         // funcdepth: 0,

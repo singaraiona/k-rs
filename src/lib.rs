@@ -3,6 +3,8 @@
 #![feature(concat_idents)]
 #![feature(discriminant_value)]
 #![feature(slice_patterns)]
+#![feature(unboxed_closures)]
+#![feature(fn_traits)]
 
 #[macro_use]
 extern crate lazy_static;

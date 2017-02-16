@@ -1,7 +1,47 @@
 use std::fmt::{self, Display};
-use parse::error::Error;
+use parse::error::Error as ParseError;
+use exec::error::Error as ExecError;
 use std::ops::Deref;
 use std::mem;
+use std::rc::Rc;
+use std::cell::UnsafeCell;
+
+#[derive(Clone)]
+pub struct Closure(pub Rc<UnsafeCell<FnMut(K) -> Result<K, ExecError>>>);
+
+impl Closure {
+    pub fn new<F: 'static>(f: F) -> Self
+        where F: FnMut(K) -> Result<K, ExecError>
+    {
+        Closure(Rc::new(UnsafeCell::new(f)))
+    }
+}
+
+impl fmt::Debug for Closure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Closure")
+    }
+}
+
+pub fn plus() -> Closure {
+    Closure::new(|x| {
+        println!("X: {:?}", x);
+        match x {
+            K::List { values: v } => {
+                match v[0] {
+                    K::Int { value: a } => {
+                        match v[1] {
+                            K::Int { value: b } => Ok(K::Int { value: a + b }),
+                            _ => unimplemented!(),
+                        }
+                    }
+                    _ => unimplemented!(),
+                }
+            }
+            _ => unimplemented!(),
+        }
+    })
+}
 
 #[derive(Debug, Clone)]
 pub enum K {
@@ -22,8 +62,23 @@ pub enum K {
         right: Box<K>,
     },
     Condition { list: Vec<K> },
-    Internal { kind: String },
+    Call { f: Closure },
     Nil,
+}
+
+impl FnMut<(K,)> for K {
+    extern "rust-call" fn call_mut(&mut self, args: (K,)) -> Self::Output {
+        match *self {            
+            _ => Ok(K::Nil),
+        }
+    }
+}
+
+impl FnOnce<(K,)> for K {
+    type Output = Result<K, ExecError>;
+    extern "rust-call" fn call_once(mut self, args: (K,)) -> Self::Output {
+        self.call_mut(args)
+    }
 }
 
 impl K {

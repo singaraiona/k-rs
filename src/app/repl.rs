@@ -2,6 +2,7 @@
 extern crate k;
 
 use k::parse::parser;
+use k::exec::i10::Interpreter;
 use std::io::{self, Read, Write};
 use std::str;
 
@@ -14,6 +15,7 @@ fn ps1() {
 
 fn main() {
     let mut p = parser::new();
+    let mut i = Interpreter::new();
     let mut input = vec![0u8; 256];
     println!("K\\ {}", VERSION);
     ps1();
@@ -21,7 +23,11 @@ fn main() {
         let size = io::stdin().read(&mut input).expect("STDIN error.");
         let k = p.parse(&input[..size - 1]);
         match k {
-            Ok(n) => println!("{:#?}", n), 
+            Ok(n) => {
+                println!("------ Parse ------ \n{:#?}", n);
+                let r = i.run(n);
+                println!("------ Run ------ \n{:?}", r);
+            } 
             Err(e) => println!("Error: {:?}", e),
         }
         ps1();
