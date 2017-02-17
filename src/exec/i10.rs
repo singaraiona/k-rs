@@ -35,6 +35,38 @@ fn add(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
     Err(ExecError::Type)
 }
 
+fn sub(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
+    match (left, right) {
+        (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a - b }),
+        (&K::List { values: ref a }, &K::Int { value: b }) => {
+            let mut r: Vec<K> = Vec::new();
+            for x in a.iter() {
+                r.push(try!(sub(x, &K::Int { value: b }, env)));
+            }
+            return Ok(K::List { values: r });
+        }
+        (&K::Int { value: a }, &K::List { values: ref b }) => {
+            let mut r: Vec<K> = Vec::new();
+            for x in b.iter() {
+                r.push(try!(sub(x, &K::Int { value: a }, env)));
+            }
+            return Ok(K::List { values: r });
+        }
+        (&K::List { values: ref a }, &K::List { values: ref b }) => {
+            if a.len() != b.len() {
+                return Err(ExecError::Length);
+            }
+            let mut r: Vec<K> = Vec::new();
+            for (x, y) in a.iter().zip(b.iter()) {
+                r.push(try!(sub(x, y, env)));
+            }
+            return Ok(K::List { values: r });
+        }
+        _ => (),
+    };
+    Err(ExecError::Type)
+}
+
 fn prod(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
     match (left, right) {
         (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a * b }),
@@ -129,6 +161,11 @@ pub fn run(k: &K, env: &mut Environment) -> Result<K, ExecError> {
                     let x = try!(run(&a[0], env));
                     let y = try!(run(&a[1], env));
                     return add(&x, &y, env);
+                }
+                "-" => {
+                    let x = try!(run(&a[0], env));
+                    let y = try!(run(&a[1], env));
+                    return sub(&x, &y, env);
                 }
                 "*" => {
                     let x = try!(run(&a[0], env));
