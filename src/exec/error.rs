@@ -5,4 +5,5 @@ pub enum Error {
     Type,
     Length,
     Condition,
+    Call,
 }

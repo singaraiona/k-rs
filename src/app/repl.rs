@@ -6,6 +6,7 @@ use k::exec::i10;
 use std::io::{self, Read, Write};
 use std::str;
 use std::ascii::AsciiExt;
+use k::exec::env::Environment;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -16,6 +17,7 @@ fn ps1() {
 
 fn main() {
     let mut p = parser::new();
+    let mut env = Environment::new();
     let mut input = vec![0u8; 256];
     println!("K\\ {}", VERSION);
     ps1();
@@ -25,7 +27,7 @@ fn main() {
         match k {
             Ok(n) => {
                 println!("------ Parse ------ \n{:#?}", n);
-                match i10::run(&n) {
+                match i10::run(&n, &mut env) {
                     Ok(x) => println!("------ Run ------ \n{}", x),
                     Err(e) => println!("'{}", format!("{:?}", e).to_ascii_lowercase()),
                 }
