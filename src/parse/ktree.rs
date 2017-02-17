@@ -103,10 +103,18 @@ impl Display for K {
             }
             K::Dict { keys: ref k, values: ref v } => {
                 try!(write!(f, "["));
-                for (key, val) in k.iter().zip(v.iter()) {
+                for (key, val) in k[..k.len() - 1].iter().zip(v.iter()) {
                     try!(write!(f, "{}:{};", key, val))
                 }
-                write!(f, "]")
+                write!(f, "{}:{}]", k[k.len() - 1], v[v.len() - 1])
+            }
+            K::Condition { list: ref c } => {
+                try!(write!(f, "$["));
+                for i in 0..c.len() - 1 {
+                    try!(write!(f, "{};", c[i]))
+                }
+                write!(f, "{}]", c[c.len() - 1])
+
             }
             K::Nil => Ok(()),
             _ => write!(f, "nyi"),
