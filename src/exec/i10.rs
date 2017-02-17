@@ -34,6 +34,31 @@ fn add(left: &K, right: &K) -> Result<K, ExecError> {
     Err(ExecError::Type)
 }
 
+fn eq(left: &K, right: &K) -> Result<K, ExecError> {
+    match (left, right) {
+        (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Bool { value: a == b }),
+        _ => (),
+    };
+    Err(ExecError::Type)
+}
+
+fn cond(c: &[K]) -> Result<K, ExecError> {
+    match c {
+        &[ref e, ref x, ref y] => {
+            match try!(run(&e)) {
+                K::Bool { value: b } => {
+                    if b {
+                        return run(&x);
+                    }
+                    return run(&y);
+                }
+                _ => Err(ExecError::Condition),
+            }
+        }
+        _ => Err(ExecError::Condition),
+    }
+}
+
 pub fn run(k: &K) -> Result<K, ExecError> {
     match *k {
         K::Verb { kind: ref k, args: ref a } => {
@@ -43,9 +68,15 @@ pub fn run(k: &K) -> Result<K, ExecError> {
                     let y = try!(run(&a[1]));
                     return add(&x, &y);
                 }
+                "=" => {
+                    let x = try!(run(&a[0]));
+                    let y = try!(run(&a[1]));
+                    return eq(&x, &y);
+                }
                 _ => (),
             };
-        }        
+        }
+        K::Condition { list: ref c } => return cond(c),
         _ => return Ok(k.clone()),
     };
     Ok(K::Nil)

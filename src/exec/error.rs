@@ -4,4 +4,5 @@ pub enum Error {
     Rank,
     Type,
     Length,
+    Condition,
 }

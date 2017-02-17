@@ -26,6 +26,7 @@ impl fmt::Debug for Closure {
 #[derive(Debug, Clone)]
 pub enum K {
     Name { value: String },
+    Bool { value: bool },
     Symbol { value: String },
     Verb { kind: String, args: Vec<K> },
     Ioverb { fd: u8 },
@@ -71,6 +72,7 @@ impl Display for K {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             K::Name { value: ref v } => write!(f, "{}", v),
+            K::Bool { value: ref v } => write!(f, "{}b", *v as u8),
             K::Symbol { value: ref v } => write!(f, "{}", v),
             K::Verb { kind: ref v, args: ref a } => {
                 if a.len() > 0 {
