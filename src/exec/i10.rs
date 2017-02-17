@@ -59,6 +59,10 @@ fn cond(c: &[K]) -> Result<K, ExecError> {
     }
 }
 
+fn call(lambda: &K, args: &[K]) -> Result<K, ExecError> {
+    Ok(K::Int { value: 1 })
+}
+
 pub fn run(k: &K) -> Result<K, ExecError> {
     match *k {
         K::Verb { kind: ref k, args: ref a } => {
@@ -72,6 +76,9 @@ pub fn run(k: &K) -> Result<K, ExecError> {
                     let x = try!(run(&a[0]));
                     let y = try!(run(&a[1]));
                     return eq(&x, &y);
+                }
+                "." => {
+                    //
                 }
                 _ => (),
             };
