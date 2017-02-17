@@ -211,14 +211,14 @@ pub fn run(k: &K, env: &mut Environment) -> Result<K, ExecError> {
                     let x = try!(run(&a[0], env));
                     match &a[1] {
                         &K::List { curry: true, values: ref v } => return call(&x, &v[..], env),
-                        _ => (),
+                        _ => return call(&x, &a[1..], env),
                     }
                 }
                 "@" => {
                     let x = try!(run(&a[0], env));
                     match &a[1] {
                         &K::List { curry: true, values: ref v } => return apply(&x, &v[..], env),
-                        _ => (),
+                        _ => return apply(&x, &a[1..], env),                        
                     }
                 }
                 _ => (),
