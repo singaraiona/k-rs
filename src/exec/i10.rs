@@ -6,21 +6,27 @@ use exec::env::Environment;
 fn add(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
     match (left, right) {
         (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a + b }),
-        (&K::List { values: ref a }, &K::Int { value: b }) => {
+        (&K::List { curry: true, values: ref a }, &K::Int { value: b }) => {
             let mut r: Vec<K> = Vec::new();
             for x in a.iter() {
                 r.push(try!(add(x, &K::Int { value: b }, env)));
             }
-            return Ok(K::List { values: r });
+            return Ok(K::List {
+                curry: true,
+                values: r,
+            });
         }
-        (&K::Int { value: a }, &K::List { values: ref b }) => {
+        (&K::Int { value: a }, &K::List { curry: true, values: ref b }) => {
             let mut r: Vec<K> = Vec::new();
             for x in b.iter() {
                 r.push(try!(add(x, &K::Int { value: a }, env)));
             }
-            return Ok(K::List { values: r });
+            return Ok(K::List {
+                curry: true,
+                values: r,
+            });
         }
-        (&K::List { values: ref a }, &K::List { values: ref b }) => {
+        (&K::List { curry: true, values: ref a }, &K::List { curry: true, values: ref b }) => {
             if a.len() != b.len() {
                 return Err(ExecError::Length);
             }
@@ -28,7 +34,10 @@ fn add(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
             for (x, y) in a.iter().zip(b.iter()) {
                 r.push(try!(add(x, y, env)));
             }
-            return Ok(K::List { values: r });
+            return Ok(K::List {
+                curry: true,
+                values: r,
+            });
         }
         _ => (),
     };
@@ -38,21 +47,27 @@ fn add(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
 fn sub(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
     match (left, right) {
         (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a - b }),
-        (&K::List { values: ref a }, &K::Int { value: b }) => {
+        (&K::List { curry: true, values: ref a }, &K::Int { value: b }) => {
             let mut r: Vec<K> = Vec::new();
             for x in a.iter() {
                 r.push(try!(sub(x, &K::Int { value: b }, env)));
             }
-            return Ok(K::List { values: r });
+            return Ok(K::List {
+                curry: true,
+                values: r,
+            });
         }
-        (&K::Int { value: a }, &K::List { values: ref b }) => {
+        (&K::Int { value: a }, &K::List { curry: true, values: ref b }) => {
             let mut r: Vec<K> = Vec::new();
             for x in b.iter() {
                 r.push(try!(sub(x, &K::Int { value: a }, env)));
             }
-            return Ok(K::List { values: r });
+            return Ok(K::List {
+                curry: true,
+                values: r,
+            });
         }
-        (&K::List { values: ref a }, &K::List { values: ref b }) => {
+        (&K::List { curry: true, values: ref a }, &K::List { curry: true, values: ref b }) => {
             if a.len() != b.len() {
                 return Err(ExecError::Length);
             }
@@ -60,7 +75,10 @@ fn sub(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
             for (x, y) in a.iter().zip(b.iter()) {
                 r.push(try!(sub(x, y, env)));
             }
-            return Ok(K::List { values: r });
+            return Ok(K::List {
+                curry: true,
+                values: r,
+            });
         }
         _ => (),
     };
@@ -70,21 +88,27 @@ fn sub(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
 fn prod(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
     match (left, right) {
         (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a * b }),
-        (&K::List { values: ref a }, &K::Int { value: b }) => {
+        (&K::List { curry: true, values: ref a }, &K::Int { value: b }) => {
             let mut r: Vec<K> = Vec::new();
             for x in a.iter() {
                 r.push(try!(prod(x, &K::Int { value: b }, env)));
             }
-            return Ok(K::List { values: r });
+            return Ok(K::List {
+                curry: true,
+                values: r,
+            });
         }
-        (&K::Int { value: a }, &K::List { values: ref b }) => {
+        (&K::Int { value: a }, &K::List { curry: true, values: ref b }) => {
             let mut r: Vec<K> = Vec::new();
             for x in b.iter() {
                 r.push(try!(prod(x, &K::Int { value: a }, env)));
             }
-            return Ok(K::List { values: r });
+            return Ok(K::List {
+                curry: true,
+                values: r,
+            });
         }
-        (&K::List { values: ref a }, &K::List { values: ref b }) => {
+        (&K::List { curry: true, values: ref a }, &K::List { curry: true, values: ref b }) => {
             if a.len() != b.len() {
                 return Err(ExecError::Length);
             }
@@ -92,7 +116,10 @@ fn prod(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
             for (x, y) in a.iter().zip(b.iter()) {
                 r.push(try!(prod(x, y, env)));
             }
-            return Ok(K::List { values: r });
+            return Ok(K::List {
+                curry: true,
+                values: r,
+            });
         }
         _ => (),
     };
@@ -183,14 +210,14 @@ pub fn run(k: &K, env: &mut Environment) -> Result<K, ExecError> {
                 "." => {
                     let x = try!(run(&a[0], env));
                     match &a[1] {
-                        &K::List { values: ref v } => return call(&x, &v[..], env),
+                        &K::List { curry: true, values: ref v } => return call(&x, &v[..], env),
                         _ => (),
                     }
                 }
                 "@" => {
                     let x = try!(run(&a[0], env));
                     match &a[1] {
-                        &K::List { values: ref v } => return apply(&x, &v[..], env),
+                        &K::List { curry: true, values: ref v } => return apply(&x, &v[..], env),
                         _ => (),
                     }
                 }

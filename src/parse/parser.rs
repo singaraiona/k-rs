@@ -21,18 +21,21 @@ macro_rules! extract {
 impl Parser {
     fn begin(&mut self, s: &str) {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"(\x22(?:[^\x22\x5C\n]|\.)*\x22)|[a-zA-Z]*(/.*)|([a-z\d\]\)]-\.?\d)|.")
+            static ref RE: Regex = Regex::new(r"(\x22(?:[^\x22\x5C\n]|\.)*\x22)|[a-zA-Z]*(/.*)|([a-z\d\]\)]-\.?\d)|([^;]-\.?\d+)|.")
                                    .unwrap();
         }
         // preserve a string, remove a comment, disambiguate a minus sign.
         self.text = RE.captures_iter(s.trim())
             .map(|cap| {
+                println!("CAP: {:?}", cap);
                 if cap.get(1).is_some() {
                     cap[1].to_string()
                 } else if cap.get(2).is_some() {
                     str::replace(&cap[0], &cap[2], "")
                 } else if cap.get(3).is_some() {
                     str::replace(&cap[3], "-", "- ")
+                } else if cap.get(4).is_some() {
+                    str::replace(&cap[4], "-", "- ")
                 } else {
                     cap[0].to_string()
                 }
@@ -153,7 +156,10 @@ impl Parser {
                 .chars()
                 .map(|x| K::Int { value: (x as i64) - 0x30 })
                 .collect();
-            return self.applyindexright(K::List { values: v });
+            return self.applyindexright(K::List {
+                curry: true,
+                values: v,
+            });
         }
         if self.at(Token::Hexlit) {
             let h = try!(self.expect(Token::Hexlit));
@@ -164,7 +170,7 @@ impl Parser {
         }
         if self.matches(Token::Cond).is_some() {
             return match try!(self.parse_list(Some(Token::CloseB))) {
-                K::List { values: v } => Ok(K::Condition { list: v }),
+                K::List { curry: true, values: v } => Ok(K::Condition { list: v }),
                 _ => Err(Error::InvalidCondition),
             };
         }
@@ -193,7 +199,12 @@ impl Parser {
             }
             return match v.len() {
                 1 => self.applyindexright(v.pop().unwrap()),
-                _ => self.applyindexright(K::List { values: v }),
+                _ => {
+                    self.applyindexright(K::List {
+                        curry: true,
+                        values: v,
+                    })
+                }
             };
         }
         if self.at(Token::Symbol) {
@@ -205,7 +216,12 @@ impl Parser {
             }
             return match v.len() {
                 1 => self.applyindexright(v.pop().unwrap()),
-                _ => self.applyindexright(K::List { values: v }),
+                _ => {
+                    self.applyindexright(K::List {
+                        curry: true,
+                        values: v,
+                    })
+                }
             };
         }
         if self.at(Token::Name) {
@@ -356,7 +372,12 @@ impl Parser {
         match vec.len() {
             0 => Ok(K::Nil),
             1 => Ok(vec.pop().unwrap()),
-            _ => Ok(K::List { values: vec }),
+            _ => {
+                Ok(K::List {
+                    curry: true,
+                    values: vec,
+                })
+            }
         }
     }
 }

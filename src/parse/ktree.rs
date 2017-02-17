@@ -33,7 +33,7 @@ pub enum K {
     Int { value: i64 },
     Float { value: f64 },
     Lambda { args: Vec<String>, body: Box<K> },
-    List { values: Vec<K> },
+    List { curry: bool, values: Vec<K> },
     Dict { keys: Vec<K>, values: Vec<K> },
     Nameref { name: String, value: Box<K> },
     Adverb {
@@ -56,7 +56,7 @@ impl K {
             }
             K::Verb { kind: _, args: ref x } => x.iter().fold(0, |a, ref i| a + i.find_names(v)),
             K::Condition { list: ref x } => x.iter().fold(0, |a, ref i| a + i.find_names(v)),
-            K::List { values: ref x } => x.iter().fold(0, |a, ref i| a + i.find_names(v)),
+            K::List { curry: _, values: ref x } => x.iter().fold(0, |a, ref i| a + i.find_names(v)),
             _ => 0,
         }
     }
@@ -94,12 +94,19 @@ impl Display for K {
                 try!(write!(f, "{}]", a[a.len() - 1]));
                 write!(f, "{}}}", b)
             }
-            K::List { values: ref v } => {
-                try!(write!(f, "("));
-                for i in 0..v.len() - 1 {
-                    try!(write!(f, "{};", v[i]));
+            K::List { curry: ref c, values: ref v } => {
+                if !c {
+                    try!(write!(f, "("));
+                    for i in 0..v.len() - 1 {
+                        try!(write!(f, "{};", v[i]));
+                    }
+                    write!(f, "{})", v[v.len() - 1])
+                } else {
+                    for i in 0..v.len() - 1 {
+                        try!(write!(f, "{} ", v[i]));
+                    }
+                    write!(f, "{}", v[v.len() - 1])
                 }
-                write!(f, "{})", v[v.len() - 1])
             }
             K::Dict { keys: ref k, values: ref v } => {
                 try!(write!(f, "["));
