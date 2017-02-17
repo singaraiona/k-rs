@@ -21,26 +21,31 @@ macro_rules! extract {
 impl Parser {
     fn begin(&mut self, s: &str) {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"(\x22(?:[^\x22\x5C\n]|\.)*\x22)|[a-zA-Z]*(/.*)|([a-z\d\]\)]-\.?\d)|([^;]-\.?\d+)|.")
+            static ref RE: Regex = Regex::new(r"(\x22(?:[^\x22\x5C\n]|\.)*\x22)|[a-zA-Z]*(/.*)|([a-z\d\]\)]-\.?\d+)|.")
                                    .unwrap();
         }
         // preserve a string, remove a comment, disambiguate a minus sign.
         self.text = RE.captures_iter(s.trim())
-            .map(|cap| {
-                println!("CAP: {:?}", cap);
+            .fold("".to_string(), |acc, cap| {
                 if cap.get(1).is_some() {
-                    cap[1].to_string()
+                    acc + &cap[1]
                 } else if cap.get(2).is_some() {
-                    str::replace(&cap[0], &cap[2], "")
+                    acc + &str::replace(&cap[0], &cap[2], "")[..]
                 } else if cap.get(3).is_some() {
-                    str::replace(&cap[3], "-", "- ")
-                } else if cap.get(4).is_some() {
-                    str::replace(&cap[4], "-", "- ")
+                    acc + &str::replace(&cap[3], "-", "- ")[..]
                 } else {
-                    cap[0].to_string()
+                    match acc.chars().rev().nth(0) {
+                        Some(c) => {
+                            if c.is_digit(10) {
+                                acc + &str::replace(&cap[0], "-", "- ")[..]
+                            } else {
+                                acc + &cap[0]
+                            }
+                        }
+                        _ => acc + &cap[0],
+                    }
                 }
-            })
-            .collect();
+            });
         self.text = self.text.replace("\n", ";");
     }
 
