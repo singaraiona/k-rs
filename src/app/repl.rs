@@ -29,9 +29,9 @@ fn main() {
         let k = p.parse(&input[..size - 1]);
         match k {
             Ok(n) => {
-                println!("------ Parse ------ \n{:#?}", n);
+                // println!("------ Parse ------ \n{:#?}", n);
                 match i10::run(&n, &mut env) {
-                    Ok(x) => println!("------ Run ------ \n{}", x),
+                    Ok(x) => println!("{}", x),
                     Err(e) => println!("'{}", format!("{:?}", e).to_ascii_lowercase()),
                 }
             } 

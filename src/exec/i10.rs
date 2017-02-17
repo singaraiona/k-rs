@@ -125,10 +125,10 @@ fn cond(c: &[K], env: &mut Environment) -> Result<K, ExecError> {
     }
 }
 
-fn call(lambda: &K, args: &[K], env: &mut Environment) -> Result<K, ExecError> {
+fn call(lambda: &K, cargs: &[K], env: &mut Environment) -> Result<K, ExecError> {
     match lambda {
         &K::Lambda { args: ref a, body: ref b } => {
-            for (n, v) in a.iter().zip(args.iter()) {
+            for (n, v) in a.iter().zip(cargs) {
                 let x = try!(run(&v, env));
                 define(n, &x, env);
             }
@@ -182,11 +182,17 @@ pub fn run(k: &K, env: &mut Environment) -> Result<K, ExecError> {
                 }
                 "." => {
                     let x = try!(run(&a[0], env));
-                    return call(&x, &a[1..], env);
+                    match &a[1] {
+                        &K::List { values: ref v } => return call(&x, &v[..], env),
+                        _ => (),
+                    }
                 }
                 "@" => {
                     let x = try!(run(&a[0], env));
-                    return apply(&x, &a[1..], env);
+                    match &a[1] {
+                        &K::List { values: ref v } => return apply(&x, &v[..], env),
+                        _ => (),
+                    }
                 }
                 _ => (),
             };
