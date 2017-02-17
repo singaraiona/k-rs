@@ -108,13 +108,7 @@ impl Display for K {
                 }
                 write!(f, "]")
             }
-            // Nameref { name: String, value: Box<K> },
-            // Adverb {
-            //     adverb: Adverb,
-            //     left: Box<K>,
-            //     verb: Box<K>,
-            //     right: Box<K>,
-            // },
+            K::Nil => Ok(()),
             _ => write!(f, "nyi"),
         }
     }

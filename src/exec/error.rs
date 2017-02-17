@@ -6,4 +6,5 @@ pub enum Error {
     Length,
     Condition,
     Call,
+    Undefined,
 }

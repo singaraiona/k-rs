@@ -1,4 +1,7 @@
 #![feature(slice_patterns)]
+#![feature(test)]
+
+extern crate test;
 extern crate k;
 
 use k::parse::parser;
@@ -35,5 +38,23 @@ fn main() {
             Err(e) => println!("'{}", format!("{:?}", e).to_ascii_lowercase()),
         }
         ps1();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test::Bencher;
+
+    #[bench]
+    fn fac_k(b: &mut Bencher) {
+        let mut p = parser::new();
+        let mut env = Environment::new();
+        let code = p.parse(b"fac:{$[x=1;1;x*fac[x-1]]}").unwrap();
+        i10::run(&code, &mut env);
+        let f = p.parse(b"fac[5]").unwrap();
+        b.iter(|| {
+            let _ = i10::run(&f, &mut env);
+        });
     }
 }

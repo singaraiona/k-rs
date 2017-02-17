@@ -104,6 +104,7 @@ fn eq(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
         (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Bool { value: a == b }),
         _ => (),
     };
+    // println!("EQ: {:?} {:?}", left, right);
     Err(ExecError::Type)
 }
 
@@ -128,7 +129,8 @@ fn call(lambda: &K, args: &[K], env: &mut Environment) -> Result<K, ExecError> {
     match lambda {
         &K::Lambda { args: ref a, body: ref b } => {
             for (n, v) in a.iter().zip(args.iter()) {
-                define(n, v, env);
+                let x = try!(run(&v, env));
+                define(n, &x, env);
             }
             return run(b, env);
         }
@@ -149,11 +151,12 @@ fn define(name: &str, value: &K, env: &mut Environment) -> Result<K, ExecError> 
 fn get(name: &str, env: &mut Environment) -> Result<K, ExecError> {
     match env.get(name) {
         Some(n) => Ok(n),
-        None => Ok(K::Nil),
+        None => Err(ExecError::Undefined),
     }
 }
 
 pub fn run(k: &K, env: &mut Environment) -> Result<K, ExecError> {
+    // println!("RUN: {:?}", k);
     match *k {
         K::Verb { kind: ref k, args: ref a } => {
             match &k[..] {
@@ -191,6 +194,7 @@ pub fn run(k: &K, env: &mut Environment) -> Result<K, ExecError> {
         K::Condition { list: ref c } => return cond(c, env),
         K::Nameref { name: ref n, value: ref v } => return define(&n[..], v, env),
         K::Name { value: ref n } => return get(n, env),        
+        K::Int { value: v } => return Ok(K::Int { value: v }),
         _ => return Ok(k.clone()),
     };
     Ok(K::Nil)
