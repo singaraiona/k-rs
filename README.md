@@ -26,5 +26,5 @@ K\ 0.1.1
 Links: 
 ------
 
-[K6 specification.](http://www.kparc.com)
-[An open-source interpreter for the K5 programming language.](git@github.com:JohnEarnest/ok.git)
+* [K6 specification.](http://www.kparc.com)
+* [An open-source interpreter for the K5 programming language.](http://git@github.com:JohnEarnest/ok.git)
