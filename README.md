@@ -3,8 +3,9 @@ K-RS
 
 An open-source interpreter for the K6 programming language.
 
-Currently it requires nightly version of Rust. Test it:
------------------------------------------------------------
+Currently it requires nightly version of Rust. 
+Test it:
+----------------------------------------------
 
 ``` 
 git clone git@github.com:singaraiona/k-rs.git
