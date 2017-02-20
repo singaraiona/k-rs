@@ -174,8 +174,9 @@ fn apply(lambda: &K, args: &[K], env: Rc<RefCell<Environment>>) -> Result<K, Exe
 }
 
 fn define(name: &str, value: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
-    env.borrow_mut().define(name.to_string(), value.clone());
-    Ok(value.clone())
+    let v = try!(run(value, env.clone()));
+    env.borrow_mut().define(name.to_string(), v.clone());
+    Ok(v)
 }
 
 fn get(name: &str, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
