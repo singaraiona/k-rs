@@ -179,22 +179,6 @@ impl Parser {
                 _ => Err(Error::InvalidCondition),
             };
         }
-        if self.at(Token::Verb) {
-            let n = try!(self.expect(Token::Verb));
-            // here is unclear point,
-            // for now it's just creates Monadic verb.
-            let v = match self.matches(Token::Colon) {
-                Some(..) => n.value(),
-                None => n.value(),
-            };
-            //
-            if self.at(Token::OpenB) && !self.at(Token::Dict) {
-                let _ = try!(self.expect(Token::OpenB));
-                let r = try!(self.parse_list(Some(Token::CloseB)));
-                return Ok(ktree::verb(v, vec![r]));
-            }
-            return Ok(ktree::verb(v, vec![]));
-        }
         if self.at(Token::Number) {
             let mut v: Vec<K> = Vec::new();
             while self.at(Token::Number) {
@@ -211,6 +195,22 @@ impl Parser {
                     })
                 }
             };
+        }
+        if self.at(Token::Verb) {
+            let n = try!(self.expect(Token::Verb));
+            // here is unclear point,
+            // for now it's just creates Monadic verb.
+            let v = match self.matches(Token::Colon) {
+                Some(..) => n.value(),
+                None => n.value(),
+            };
+            //
+            if self.at(Token::OpenB) && !self.at(Token::Dict) {
+                let _ = try!(self.expect(Token::OpenB));
+                let r = try!(self.parse_list(Some(Token::CloseB)));
+                return Ok(ktree::verb(v, vec![r]));
+            }
+            return Ok(ktree::verb(v, vec![]));
         }
         if self.at(Token::Symbol) {
             let mut v: Vec<K> = Vec::new();
