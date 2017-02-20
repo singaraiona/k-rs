@@ -1,15 +1,17 @@
 use parse::ktree::K;
 use parse::error::Error as ParseError;
 use exec::error::Error as ExecError;
+use std::rc::Rc;
+use std::cell::RefCell;
 use exec::env::Environment;
 
-fn add(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
+fn add(left: &K, right: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
     match (left, right) {
         (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a + b }),
         (&K::List { curry: true, values: ref a }, &K::Int { value: b }) => {
             let mut r: Vec<K> = Vec::new();
             for x in a.iter() {
-                r.push(try!(add(x, &K::Int { value: b }, env)));
+                r.push(try!(add(x, &K::Int { value: b }, env.clone())));
             }
             return Ok(K::List {
                 curry: true,
@@ -19,7 +21,7 @@ fn add(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
         (&K::Int { value: a }, &K::List { curry: true, values: ref b }) => {
             let mut r: Vec<K> = Vec::new();
             for x in b.iter() {
-                r.push(try!(add(x, &K::Int { value: a }, env)));
+                r.push(try!(add(x, &K::Int { value: a }, env.clone())));
             }
             return Ok(K::List {
                 curry: true,
@@ -32,7 +34,7 @@ fn add(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
             }
             let mut r: Vec<K> = Vec::new();
             for (x, y) in a.iter().zip(b.iter()) {
-                r.push(try!(add(x, y, env)));
+                r.push(try!(add(x, y, env.clone())));
             }
             return Ok(K::List {
                 curry: true,
@@ -44,13 +46,13 @@ fn add(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
     Err(ExecError::Type)
 }
 
-fn sub(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
+fn sub(left: &K, right: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
     match (left, right) {
         (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a - b }),
         (&K::List { curry: true, values: ref a }, &K::Int { value: b }) => {
             let mut r: Vec<K> = Vec::new();
             for x in a.iter() {
-                r.push(try!(sub(x, &K::Int { value: b }, env)));
+                r.push(try!(sub(x, &K::Int { value: b }, env.clone())));
             }
             return Ok(K::List {
                 curry: true,
@@ -60,7 +62,7 @@ fn sub(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
         (&K::Int { value: a }, &K::List { curry: true, values: ref b }) => {
             let mut r: Vec<K> = Vec::new();
             for x in b.iter() {
-                r.push(try!(sub(x, &K::Int { value: a }, env)));
+                r.push(try!(sub(x, &K::Int { value: a }, env.clone())));
             }
             return Ok(K::List {
                 curry: true,
@@ -73,7 +75,7 @@ fn sub(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
             }
             let mut r: Vec<K> = Vec::new();
             for (x, y) in a.iter().zip(b.iter()) {
-                r.push(try!(sub(x, y, env)));
+                r.push(try!(sub(x, y, env.clone())));
             }
             return Ok(K::List {
                 curry: true,
@@ -85,13 +87,13 @@ fn sub(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
     Err(ExecError::Type)
 }
 
-fn prod(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
+fn prod(left: &K, right: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
     match (left, right) {
         (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a * b }),
         (&K::List { curry: true, values: ref a }, &K::Int { value: b }) => {
             let mut r: Vec<K> = Vec::new();
             for x in a.iter() {
-                r.push(try!(prod(x, &K::Int { value: b }, env)));
+                r.push(try!(prod(x, &K::Int { value: b }, env.clone())));
             }
             return Ok(K::List {
                 curry: true,
@@ -101,7 +103,7 @@ fn prod(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
         (&K::Int { value: a }, &K::List { curry: true, values: ref b }) => {
             let mut r: Vec<K> = Vec::new();
             for x in b.iter() {
-                r.push(try!(prod(x, &K::Int { value: a }, env)));
+                r.push(try!(prod(x, &K::Int { value: a }, env.clone())));
             }
             return Ok(K::List {
                 curry: true,
@@ -114,7 +116,7 @@ fn prod(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
             }
             let mut r: Vec<K> = Vec::new();
             for (x, y) in a.iter().zip(b.iter()) {
-                r.push(try!(prod(x, y, env)));
+                r.push(try!(prod(x, y, env.clone())));
             }
             return Ok(K::List {
                 curry: true,
@@ -126,7 +128,7 @@ fn prod(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
     Err(ExecError::Type)
 }
 
-fn eq(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
+fn eq(left: &K, right: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
     match (left, right) {
         (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Bool { value: a == b }),
         _ => (),
@@ -135,15 +137,15 @@ fn eq(left: &K, right: &K, env: &mut Environment) -> Result<K, ExecError> {
     Err(ExecError::Type)
 }
 
-fn cond(c: &[K], env: &mut Environment) -> Result<K, ExecError> {
+fn cond(c: &[K], env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
     match c {
         &[ref e, ref x, ref y] => {
-            match try!(run(&e, env)) {
+            match try!(run(&e, env.clone())) {
                 K::Bool { value: b } => {
                     if b {
-                        return run(&x, env);
+                        return run(&x, env.clone());
                     }
-                    return run(&y, env);
+                    return run(&y, env.clone());
                 }
                 _ => Err(ExecError::Condition),
             }
@@ -152,81 +154,86 @@ fn cond(c: &[K], env: &mut Environment) -> Result<K, ExecError> {
     }
 }
 
-fn call(lambda: &K, cargs: &[K], env: &mut Environment) -> Result<K, ExecError> {
+fn call(lambda: &K, cargs: &[K], env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
     match lambda {
         &K::Lambda { args: ref a, body: ref b } => {
+            let e = Environment::new_child(env);
             for (n, v) in a.iter().zip(cargs) {
-                let x = try!(run(&v, env));
-                define(n, &x, env);
+                let x = try!(run(&v, e.clone()));
+                define(n, &x, e.clone());
             }
-            return run(b, env);
+            return run(b, e.clone());
         }
         _ => (),
     }
     Err(ExecError::Call)
 }
 
-fn apply(lambda: &K, args: &[K], env: &mut Environment) -> Result<K, ExecError> {
-    call(lambda, args, env)
+fn apply(lambda: &K, args: &[K], env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
+    call(lambda, args, env.clone())
 }
 
-fn define(name: &str, value: &K, env: &mut Environment) -> Result<K, ExecError> {
-    env.define(name, value);
+fn define(name: &str, value: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
+    env.borrow_mut().define(name.to_string(), value.clone());
     Ok(value.clone())
 }
 
-fn get(name: &str, env: &mut Environment) -> Result<K, ExecError> {
-    match env.get(name) {
+fn get(name: &str, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
+    match env.borrow().get(name) {
         Some(n) => Ok(n),
         None => Err(ExecError::Undefined),
     }
 }
 
-pub fn run(k: &K, env: &mut Environment) -> Result<K, ExecError> {
+pub fn run(k: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
     // println!("RUN: {:?}", k);
     match *k {
         K::Verb { kind: ref k, args: ref a } => {
             match &k[..] {
                 "+" => {
-                    let x = try!(run(&a[0], env));
-                    let y = try!(run(&a[1], env));
-                    return add(&x, &y, env);
+                    let x = try!(run(&a[0], env.clone()));
+                    let y = try!(run(&a[1], env.clone()));
+                    return add(&x, &y, env.clone());
                 }
                 "-" => {
-                    let x = try!(run(&a[0], env));
-                    let y = try!(run(&a[1], env));
-                    return sub(&x, &y, env);
+                    let x = try!(run(&a[0], env.clone()));
+                    let y = try!(run(&a[1], env.clone()));
+                    return sub(&x, &y, env.clone());
                 }
                 "*" => {
-                    let x = try!(run(&a[0], env));
-                    let y = try!(run(&a[1], env));
-                    return prod(&x, &y, env);
+                    let x = try!(run(&a[0], env.clone()));
+                    let y = try!(run(&a[1], env.clone()));
+                    return prod(&x, &y, env.clone());
                 }
                 "=" => {
-                    let x = try!(run(&a[0], env));
-                    let y = try!(run(&a[1], env));
-                    return eq(&x, &y, env);
+                    let x = try!(run(&a[0], env.clone()));
+                    let y = try!(run(&a[1], env.clone()));
+                    return eq(&x, &y, env.clone());
                 }
                 "." => {
-                    let x = try!(run(&a[0], env));
+                    let x = try!(run(&a[0], env.clone()));
                     match &a[1] {
-                        &K::List { curry: true, values: ref v } => return call(&x, &v[..], env),
-                        _ => return call(&x, &a[1..], env),
+                        &K::List { curry: true, values: ref v } => {
+                            return call(&x, &v[..], env.clone())
+                        }
+                        _ => return call(&x, &a[1..], env.clone()),
                     }
                 }
                 "@" => {
-                    let x = try!(run(&a[0], env));
+                    let x = try!(run(&a[0], env.clone()));
                     match &a[1] {
-                        &K::List { curry: true, values: ref v } => return apply(&x, &v[..], env),
-                        _ => return apply(&x, &a[1..], env),                        
+                        &K::List { curry: true, values: ref v } => {
+                            return apply(&x, &v[..], env.clone())
+                        }
+                        _ => return apply(&x, &a[1..], env.clone()),                        
                     }
                 }
                 _ => (),
             };
         }
-        K::Condition { list: ref c } => return cond(c, env),
-        K::Nameref { name: ref n, value: ref v } => return define(&n[..], v, env),
-        K::Name { value: ref n } => return get(n, env),        
+        K::Condition { list: ref c } => return cond(c, env.clone()),
+        K::Nameref { name: ref n, value: ref v } => return define(&n[..], v, env.clone()),
+        K::Name { value: ref n } => return get(n, env.clone()),        
         K::Int { value: v } => return Ok(K::Int { value: v }),
         _ => return Ok(k.clone()),
     };

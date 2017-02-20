@@ -30,7 +30,7 @@ fn main() {
         match k {
             Ok(n) => {
                 // println!("------ Parse ------ \n{:#?}", n);
-                match i10::run(&n, &mut env) {
+                match i10::run(&n, env.clone()) {
                     Ok(x) => println!("{}", x),
                     Err(e) => println!("'{}", format!("{:?}", e).to_ascii_lowercase()),
                 }
@@ -51,10 +51,10 @@ mod tests {
         let mut p = parser::new();
         let mut env = Environment::new();
         let code = p.parse(b"fac:{$[x=1;1;x*fac[x-1]]}").unwrap();
-        i10::run(&code, &mut env);
+        i10::run(&code, env.clone());
         let f = p.parse(b"fac[5]").unwrap();
         b.iter(|| {
-            let _ = i10::run(&f, &mut env);
+            let _ = i10::run(&f, env.clone());
         });
     }
 }

@@ -6,23 +6,6 @@ use std::mem;
 use std::rc::Rc;
 use std::cell::UnsafeCell;
 
-#[derive(Clone)]
-pub struct Closure(pub Rc<UnsafeCell<FnMut(K) -> Result<K, ExecError>>>);
-
-impl Closure {
-    pub fn new<F: 'static>(f: F) -> Self
-        where F: FnMut(K) -> Result<K, ExecError>
-    {
-        Closure(Rc::new(UnsafeCell::new(f)))
-    }
-}
-
-impl fmt::Debug for Closure {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Closure")
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum K {
     Name { value: String },
@@ -43,7 +26,6 @@ pub enum K {
         right: Box<K>,
     },
     Condition { list: Vec<K> },
-    Call { f: Closure },
     Nil,
 }
 

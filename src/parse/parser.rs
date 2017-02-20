@@ -1,6 +1,6 @@
 use std::str;
 use parse::error::Error;
-use parse::ktree::{self, K, Closure};
+use parse::ktree::{self, K};
 use parse::token::{Token, Raw};
 use regex::Regex;
 use std::rc::Rc;
