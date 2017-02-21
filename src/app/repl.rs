@@ -4,7 +4,6 @@
 extern crate test;
 extern crate k;
 
-use k::parse::parser;
 use k::exec::i10;
 use std::io::{self, Read, Write};
 use std::str;
@@ -19,7 +18,6 @@ fn ps1() {
 }
 
 fn main() {
-    let mut p = parser::new();
     let mut i = i10::new();
     let mut env = Environment::new();
     let mut input = vec![0u8; 256];
@@ -27,7 +25,7 @@ fn main() {
     ps1();
     loop {
         let size = io::stdin().read(&mut input).expect("STDIN error.");
-        let k = p.parse(&input[..size - 1]);
+        let k = i.parse(&input[..size - 1]);
         match k {
             Ok(n) => {
                 // println!("------ Parse ------ \n{:#?}", n);

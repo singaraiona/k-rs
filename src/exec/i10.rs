@@ -1,5 +1,5 @@
 use parse::ktree::K;
-use parse::parser::Parser;
+use parse::parser::{self, Parser};
 use parse::error::Error as ParseError;
 use exec::error::Error as ExecError;
 use std::rc::Rc;
@@ -208,6 +208,10 @@ impl Interpreter {
         }
     }
 
+    pub fn parse(&mut self, b: &[u8]) -> Result<K, ParseError> {
+        self.parser.parse(b)
+    }
+
     pub fn run(&mut self, k: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
         // println!("RUN: {:?}", k);
         match *k {
@@ -265,5 +269,5 @@ impl Interpreter {
 }
 
 pub fn new() -> Interpreter {
-    Interpreter { parser: Parser::new() }
+    Interpreter { parser: parser::new() }
 }
