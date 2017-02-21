@@ -11,7 +11,7 @@ pub struct Environment {
 
 impl Environment {
     pub fn new() -> Rc<RefCell<Environment>> {
-        let mut env = Environment {
+        let env = Environment {
             parent: None,
             values: HashMap::with_capacity(100),
         };

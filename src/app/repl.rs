@@ -20,7 +20,7 @@ fn ps1() {
 
 fn main() {
     let mut i = i10::new();
-    let mut env = Environment::new();
+    let env = Environment::new();
     let mut input = vec![0u8; 256];
     println!("K\\ {}", VERSION);
     ps1();

@@ -56,15 +56,14 @@ impl<T, I: Unsigned + Add + FromPrimitive + ToPrimitive + Copy> Vect<T, I> {
     #[inline(always)]
     pub fn set<A>(&self, ix: usize, arena: &mut ArenaMem<A, I>, v: T) {
         debug_assert!((ix < self.len), "Index error");
-        unsafe {
-            replace(arena.deref_as_offset_mut::<T>(self.first, ix), v);
-        }
+        replace(arena.deref_as_offset_mut::<T>(self.first, ix), v);
+
     }
 
     #[inline(always)]
     pub fn get<'a, A>(&self, ix: usize, arena: &'a ArenaMem<A, I>) -> &'a T {
         debug_assert!((ix < self.len), "Index error");
-        unsafe { arena.deref_as_offset::<T>(self.first, ix) }
+        arena.deref_as_offset::<T>(self.first, ix)
     }
 
     pub fn iter<'a, A>(&self, arena: &'a ArenaMem<A, I>) -> VectArenaIter<'a, T, A, I> {

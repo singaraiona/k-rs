@@ -2,67 +2,11 @@ use parse::ktree::K;
 use parse::parser::{self, Parser};
 use parse::error::Error as ParseError;
 use exec::error::Error as ExecError;
-use std::collections::HashMap;
-use std::cell::UnsafeCell;
 use std::rc::Rc;
 use std::cell::RefCell;
 use exec::env::Environment;
+use parse::alloc::Arena;
 use stacker;
-
-#[derive(Debug)]
-pub struct Arena {
-    pub names: HashMap<String, u16>,
-    pub symbols: HashMap<String, u16>,
-}
-
-impl Arena {
-    pub fn new() -> Arena {
-        Arena {
-            names: HashMap::new(),
-            symbols: HashMap::new(),
-        }
-    }
-
-    pub fn intern_symbol(&mut self, s: String) -> K {
-        let id = self.symbols.len() as u16;
-        K::Symbol { value: *self.symbols.entry(s).or_insert(id) }
-    }
-
-    pub fn intern_name(&mut self, s: String) -> K {
-        let id = self.names.len() as u16;
-        K::Name { value: *self.names.entry(s).or_insert(id) }
-    }
-
-    pub fn intern_name_id(&mut self, s: String) -> u16 {
-        let id = self.names.len() as u16;
-        *self.names.entry(s).or_insert(id)
-    }
-
-    pub fn name_id(&self, s: &str) -> u16 {
-        match self.names.get(s) {
-            Some(&id) => id,
-            None => self.names.len() as u16,
-        }
-    }
-
-    pub fn id_name(&self, id: u16) -> String {
-        for (key, val) in self.names.iter() {
-            if *val == id {
-                return key.clone();
-            }
-        }
-        "".to_string()
-    }
-
-    pub fn id_symbol(&self, id: u16) -> String {
-        for (key, val) in self.symbols.iter() {
-            if *val == id {
-                return key.clone();
-            }
-        }
-        "".to_string()
-    }
-}
 
 pub struct Interpreter {
     parser: Parser,
@@ -193,12 +137,11 @@ impl Interpreter {
         Err(ExecError::Type)
     }
 
-    fn eq(&mut self, left: &K, right: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
+    fn eq(&mut self, left: &K, right: &K, _: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
         match (left, right) {
             (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Bool { value: a == b }),
             _ => (),
         };
-        // println!("EQ: {:?} {:?}", left, right);
         Err(ExecError::Type)
     }
 
@@ -229,7 +172,7 @@ impl Interpreter {
                 let e = Environment::new_child(env);
                 for (n, v) in a.iter().zip(cargs) {
                     let x = try!(self.run(&v, e.clone()));
-                    self.define(*n, &x, e.clone());
+                    let _ = self.define(*n, &x, e.clone());
                 }
                 if stacker::remaining_stack() <= 8013672 {
                     return Err(ExecError::Stack);

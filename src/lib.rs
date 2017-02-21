@@ -4,7 +4,6 @@
 #![feature(discriminant_value)]
 #![feature(slice_patterns)]
 #![feature(unboxed_closures)]
-#![feature(fn_traits)]
 #![feature(alloc)]
 
 #[macro_use]

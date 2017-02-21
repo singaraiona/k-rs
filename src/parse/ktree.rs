@@ -1,14 +1,8 @@
-use std::fmt::{self, Display};
-use parse::error::Error as ParseError;
-use exec::error::Error as ExecError;
-use std::ops::Deref;
 use std::mem;
-use std::rc::Rc;
-use std::cell::UnsafeCell;
 use std::ops::Index;
 use std::slice::Iter;
-use exec::i10::Arena;
-use std::io::{self, stdout, Write};
+use parse::alloc::Arena;
+use std::io::{stdout, Write};
 
 #[derive(Debug, Clone)]
 pub struct Args {
@@ -40,12 +34,12 @@ impl Args {
 
     fn pp(&self, arena: &Arena) {
         let mut f = stdout();
-        write!(f, "[");
+        let _ = write!(f, "[");
         for i in 0..self.len() - 1 {
-            write!(f, "{};", arena.id_name(self.args[i]));
+            let _ = write!(f, "{};", arena.id_name(self.args[i]));
         }
-        write!(f, "{}", arena.id_name(self.args[self.len() - 1]));
-        write!(f, "]");
+        let _ = write!(f, "{}", arena.id_name(self.args[self.len() - 1]));
+        let _ = write!(f, "]");
     }
 }
 
@@ -117,25 +111,25 @@ pub fn pp(ktree: &K, arena: &Arena) {
     let mut f = stdout();
     match *ktree {
         K::Name { value: v } => {
-            write!(f, "{}", arena.id_name(v));
+            let _ = write!(f, "{}", arena.id_name(v));
         }
         K::Bool { value: ref v } => {
-            write!(f, "{}b", *v as u8);
+            let _ = write!(f, "{}b", *v as u8);
         }
         K::Symbol { value: v } => {
-            write!(f, "`{}", arena.id_symbol(v));
+            let _ = write!(f, "`{}", arena.id_symbol(v));
         }
         K::Int { value: v } => {
-            write!(f, "{}", v);
+            let _ = write!(f, "{}", v);
         }
         K::Float { value: v } => {
-            write!(f, "{}", v);
+            let _ = write!(f, "{}", v);
         }
         K::Verb { kind: ref v, args: ref a } => {
             if a.len() > 0 {
                 pp(&a[0], arena);
             }
-            write!(f, "{}", *v as char);
+            let _ = write!(f, "{}", *v as char);
             for i in 1..a.len() - 1 {
                 pp(&a[i], arena);
             }
@@ -143,24 +137,24 @@ pub fn pp(ktree: &K, arena: &Arena) {
         }
 
         K::Lambda { args: ref a, body: ref b } => {
-            write!(f, "{{");
+            let _ = write!(f, "{{");
             a.pp(arena);
             pp(b, arena);
-            write!(f, "}}");
+            let _ = write!(f, "}}");
         }
         K::List { curry: ref c, values: ref v } => {
             if !c {
-                write!(f, "(");
+                let _ = write!(f, "(");
                 for i in 0..v.len() - 1 {
                     pp(&v[i], arena);
-                    write!(f, ";");
+                    let _ = write!(f, ";");
                 }
                 pp(&v[v.len() - 1], arena);
-                write!(f, ")");
+                let _ = write!(f, ")");
             } else {
                 for i in 0..v.len() - 1 {
                     pp(&v[i], arena);
-                    write!(f, " ");
+                    let _ = write!(f, " ");
                 }
                 pp(&v[v.len() - 1], arena);
             }
@@ -182,7 +176,7 @@ pub fn pp(ktree: &K, arena: &Arena) {
         // }
         // K::Nil => Ok(()),
         _ => {
-            write!(f, "nyi");
+            let _ = write!(f, "nyi");
         }
     };
 }
@@ -194,9 +188,10 @@ pub fn verb(c: char, args: Vec<K>) -> K {
     }
 }
 
-pub fn adverb(s: &str, left: Box<K>, verb: Box<K>, right: Box<K>) -> K {
+pub fn adverb(s: String, left: Box<K>, verb: Box<K>, right: Box<K>) -> K {
+    let b = s.into_bytes();
     K::Adverb {
-        kind: s.to_string(),
+        kind: [b[0], b[1]],
         left: left,
         verb: verb,
         right: right,

@@ -3,9 +3,7 @@ use parse::error::Error;
 use parse::ktree::{self, K, Args};
 use parse::token::{Token, Raw};
 use regex::Regex;
-use std::rc::Rc;
-use std::cell::UnsafeCell;
-use exec::i10::Arena;
+use parse::alloc::Arena;
 
 pub struct Parser {
     text: String,
@@ -133,7 +131,7 @@ impl Parser {
         // if (at(OPEN_B)) { return applycallright({ t:9, v:a, kind:verb, l:left }); }
         let n = try!(self.parse_noun(arena));
         let right = try!(self.parse_ex(arena, n));
-        return Ok(ktree::adverb(a.value(), box left, box verb, box right));
+        return Ok(ktree::adverb(a.value().to_string(), box left, box verb, box right));
     }
 
     #[inline]
@@ -398,7 +396,7 @@ impl Parser {
 }
 
 pub fn new() -> Parser {
-    let mut natives = Vec::new();
+    let natives = Vec::new();
     Parser {
         text: String::new(),
         natives: natives,
