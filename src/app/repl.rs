@@ -47,13 +47,13 @@ mod tests {
 
     #[bench]
     fn fac_k(b: &mut Bencher) {
-        let mut p = parser::new();
+        let mut i = i10::new();
         let mut env = Environment::new();
-        let code = p.parse(b"fac:{$[x=1;1;x*fac[x-1]]}").unwrap();
-        i10::run(&code, env.clone());
-        let f = p.parse(b"fac[5]").unwrap();
+        let code = i.parse(b"fac:{$[x=1;1;x*fac[x-1]]}").unwrap();
+        i.run(&code, env.clone());
+        let f = i.parse(b"fac[5]").unwrap();
         b.iter(|| {
-            let _ = i10::run(&f, env.clone());
+            let _ = i.run(&f, env.clone());
         });
     }
 }
