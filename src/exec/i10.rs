@@ -1,4 +1,5 @@
 use parse::ktree::K;
+use parse::parser::Parser;
 use parse::error::Error as ParseError;
 use exec::error::Error as ExecError;
 use std::rc::Rc;
@@ -6,7 +7,9 @@ use std::cell::RefCell;
 use exec::env::Environment;
 use stacker;
 
-pub struct Interpreter;
+pub struct Interpreter {
+    parser: Parser,
+}
 
 impl Interpreter {
     fn add(&mut self, left: &K, right: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
@@ -262,5 +265,5 @@ impl Interpreter {
 }
 
 pub fn new() -> Interpreter {
-    Interpreter {}
+    Interpreter { parser: Parser::new() }
 }

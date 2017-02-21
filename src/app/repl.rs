@@ -35,7 +35,7 @@ fn main() {
                     Ok(x) => println!("{}", x),
                     Err(e) => println!("'{}", format!("{:?}", e).to_ascii_lowercase()),
                 }
-            } 
+            }
             Err(e) => println!("'{}", format!("{:?}", e).to_ascii_lowercase()),
         }
         ps1();
