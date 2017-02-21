@@ -7,4 +7,5 @@ pub enum Error {
     Condition,
     Call,
     Undefined,
+    Stack,
 }

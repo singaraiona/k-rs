@@ -20,6 +20,7 @@ fn ps1() {
 
 fn main() {
     let mut p = parser::new();
+    let mut i = i10::new();
     let mut env = Environment::new();
     let mut input = vec![0u8; 256];
     println!("K\\ {}", VERSION);
@@ -30,7 +31,7 @@ fn main() {
         match k {
             Ok(n) => {
                 // println!("------ Parse ------ \n{:#?}", n);
-                match i10::run(&n, env.clone()) {
+                match i.run(&n, env.clone()) {
                     Ok(x) => println!("{}", x),
                     Err(e) => println!("'{}", format!("{:?}", e).to_ascii_lowercase()),
                 }
