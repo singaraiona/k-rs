@@ -146,7 +146,7 @@ impl Parser {
         if self.matches(Token::Colon).is_some() {
             return Ok(K::Lambda {
                 args: vec!["x".to_string(), "y".to_string()],
-                body: box K::Name { value: "y".to_string() },
+                body: box arena.intern_name("y".to_string()),
             });
         }
         if self.at(Token::Ioverb) {
@@ -256,9 +256,9 @@ impl Parser {
                 // if (at(ASSIGN)) { return compoundassign(n, index); }
                 // if (matches(COLON)) { return indexedassign(n, index); }
                 // if (index.length == 0) { index = [NIL]; }
-                return Ok(ktree::verb(".", vec![K::Name { value: t }, index]));
+                return Ok(ktree::verb(".", vec![arena.intern_name(t), index]));
             }
-            return Ok(K::Name { value: t });
+            return Ok(arena.intern_name(t));
         }
         if self.matches(Token::OpenB).is_some() {
             let mut keys: Vec<K> = Vec::new();
@@ -269,7 +269,7 @@ impl Parser {
                     let _ = self.expect(Token::Colon);
                     let n = try!(self.parse_noun(arena));
                     let value = try!(self.parse_ex(arena, n));
-                    let kname = K::Name { value: try!(key.parse::<String>()) };
+                    let kname = arena.intern_name(try!(key.parse::<String>()));
                     keys.push(kname);
                     values.push(value);
                     if self.matches(Token::Semi).is_none() {
@@ -301,16 +301,16 @@ impl Parser {
             }
             let r = try!(self.parse_list(arena, Some(Token::CloseC)));
             if args.is_empty() {
-                let mut names: Vec<String> = Vec::new();
+                let mut names: Vec<u16> = Vec::new();
                 r.find_names(&mut names);
-                if names.contains(&"z".to_string()) {
+                if names.contains(&arena.name_id("z")) {
                     args.push(String::from("x"));
                     args.push(String::from("y"));
                     args.push(String::from("z"));
-                } else if names.contains(&"y".to_string()) {
+                } else if names.contains(&arena.name_id("y")) {
                     args.push(String::from("x"));
                     args.push(String::from("y"));
-                } else if names.contains(&"x".to_string()) {
+                } else if names.contains(&arena.name_id("x")) {
                     args.push(String::from("x"));
                 }
             }

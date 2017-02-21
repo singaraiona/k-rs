@@ -27,6 +27,27 @@ impl Arena {
         let id = self.symbols.len() as u16;
         K::Symbol { value: *self.symbols.entry(s).or_insert(id) }
     }
+
+    pub fn intern_name(&mut self, s: String) -> K {
+        let id = self.names.len() as u16;
+        K::Name { value: *self.names.entry(s).or_insert(id) }
+    }
+
+    pub fn name_id(&self, s: &str) -> u16 {
+        match self.names.get(s) {
+            Some(&id) => id,
+            None => self.names.len() as u16,
+        }
+    }
+
+    pub fn id_name(&self, id: u16) -> String {
+        for (key, val) in self.names.iter() {
+            if *val == id {
+                return key.clone();
+            }
+        }
+        "".to_string()
+    }
 }
 
 pub struct Interpreter {
@@ -224,8 +245,8 @@ impl Interpreter {
         Ok(v)
     }
 
-    fn get(&mut self, name: &str, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
-        match env.borrow().get(name) {
+    fn get(&mut self, id: u16, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
+        match env.borrow().get(&self.arena.id_name(id)[..]) {
             Some(n) => Ok(n),
             None => Err(ExecError::Undefined),
         }
@@ -283,7 +304,7 @@ impl Interpreter {
             }
             K::Condition { list: ref c } => return self.cond(c, env.clone()),
             K::Nameref { name: ref n, value: ref v } => return self.define(&n[..], v, env.clone()),
-            K::Name { value: ref n } => return self.get(n, env.clone()),        
+            K::Name { value: n } => return self.get(n, env.clone()),
             K::Int { value: v } => return Ok(K::Int { value: v }),
             _ => return Ok(k.clone()),
         };

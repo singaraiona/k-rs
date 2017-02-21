@@ -8,7 +8,7 @@ use std::cell::UnsafeCell;
 
 #[derive(Debug, Clone)]
 pub enum K {
-    Name { value: String },
+    Name { value: u16 },
     Bool { value: bool },
     Symbol { value: u16 },
     Verb { kind: String, args: Vec<K> },
@@ -30,10 +30,10 @@ pub enum K {
 }
 
 impl K {
-    pub fn find_names(&self, v: &mut Vec<String>) -> usize {
+    pub fn find_names(&self, v: &mut Vec<u16>) -> usize {
         match *self {
-            K::Name { value: ref n } => {
-                v.push(n.clone());
+            K::Name { value: n } => {
+                v.push(n);
                 1
             }
             K::Verb { kind: _, args: ref x } => x.iter().fold(0, |a, ref i| a + i.find_names(v)),
