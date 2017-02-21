@@ -102,6 +102,7 @@ impl Parser {
     }
 
     fn applyindexright(&mut self, arena: &mut Arena, node: K) -> Result<K, Error> {
+        println!("Vector: {:?}", node);
         // if (node.sticky && at(VERB)) {
         //     if self.at(Token::Verb) {
         // 	let x = try!(self.parseNoun());
@@ -189,11 +190,15 @@ impl Parser {
             }
             return match v.len() {
                 1 => self.applyindexright(arena, v.pop().unwrap()),
-                _ => {
+                x => {
+                    let vec = arena.ktree.alloc_vec::<K>(x);
+                    for u in vec.as_slice_mut(&mut arena.ktree) {
+                        *u = v.remove(0);
+                    }
                     self.applyindexright(arena,
-                                         K::List {
+                                         K::Vector {
                                              curry: true,
-                                             values: v,
+                                             values: vec,
                                          })
                 }
             };

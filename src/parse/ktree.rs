@@ -2,6 +2,7 @@ use std::mem;
 use std::ops::Index;
 use std::slice::Iter;
 use parse::alloc::Arena;
+use parse::vector::Vector;
 use std::io::{stdout, Write};
 
 #[derive(Debug, Clone)]
@@ -74,6 +75,7 @@ pub enum K {
     Float { value: f64 },
     Lambda { args: Args, body: Box<K> },
     List { curry: bool, values: Vec<K> },
+    Vector { curry: bool, values: Vector<K, Id> },
     Dict { keys: Vec<K>, values: Vec<K> },
     Nameref { id: u16, value: Box<K> },
     Adverb {
@@ -197,3 +199,6 @@ pub fn adverb(s: String, left: Box<K>, verb: Box<K>, right: Box<K>) -> K {
         right: right,
     }
 }
+
+
+pub type Id = u64;

@@ -15,5 +15,6 @@ extern crate core;
 extern crate num;
 extern crate alloc;
 
+pub mod handle;
 pub mod parse;
 pub mod exec;
