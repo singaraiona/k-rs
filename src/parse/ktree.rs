@@ -37,6 +37,16 @@ impl Args {
     pub fn iter(&self) -> Iter<u16> {
         self.args.iter()
     }
+
+    fn pp(&self, arena: &Arena) {
+        let mut f = stdout();
+        write!(f, "[");
+        for i in 0..self.len() - 1 {
+            write!(f, "{};", arena.id_name(self.args[i]));
+        }
+        write!(f, "{}", arena.id_name(self.args[self.len() - 1]));
+        write!(f, "]");
+    }
 }
 
 #[macro_export]
@@ -56,16 +66,6 @@ impl Index<usize> for Args {
     type Output = u16;
     fn index(&self, i: usize) -> &Self::Output {
         &self.args[i]
-    }
-}
-
-impl Display for Args {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "["));
-        for i in 0..self.len() - 1 {
-            try!(write!(f, "{};", self.args[i]));
-        }
-        write!(f, "{}]", self.args[self.len() - 1])
     }
 }
 
@@ -116,8 +116,8 @@ impl PartialEq for K {
 pub fn pp(ktree: &K, arena: &Arena) {
     let mut f = stdout();
     match *ktree {
-        K::Name { value: ref v } => {
-            write!(f, "{}", v);
+        K::Name { value: v } => {
+            write!(f, "{}", arena.id_name(v));
         }
         K::Bool { value: ref v } => {
             write!(f, "{}b", *v as u8);
@@ -144,7 +144,7 @@ pub fn pp(ktree: &K, arena: &Arena) {
 
         K::Lambda { args: ref a, body: ref b } => {
             write!(f, "{{");
-            pp(a, arena);
+            a.pp(arena);
             pp(b, arena);
             write!(f, "}}");
         }
