@@ -143,7 +143,8 @@ pub fn pp(ktree: &K, arena: &Arena) {
         }
 
         K::Lambda { args: ref a, body: ref b } => {
-            write!(f, "{{{}", a);
+            write!(f, "{{");
+            pp(a, arena);
             pp(b, arena);
             write!(f, "}}");
         }
