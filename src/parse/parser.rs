@@ -1,6 +1,6 @@
 use std::str;
 use parse::error::Error;
-use parse::ktree::{self, K};
+use parse::ktree::{self, K, Args};
 use parse::token::{Token, Raw};
 use regex::Regex;
 use std::rc::Rc;
@@ -145,7 +145,8 @@ impl Parser {
     fn parse_noun(&mut self, arena: &mut Arena) -> Result<K, Error> {
         if self.matches(Token::Colon).is_some() {
             return Ok(K::Lambda {
-                args: vec!["x".to_string(), "y".to_string()],
+                args: args![arena.intern_name_id("x".to_string()),
+                            arena.intern_name_id("y".to_string())],
                 body: box arena.intern_name("y".to_string()),
             });
         }
@@ -219,7 +220,8 @@ impl Parser {
             let mut v: Vec<K> = Vec::new();
             while self.at(Token::Symbol) {
                 let n = try!(self.expect(Token::Symbol));
-                let t = try!(n.parse::<String>());
+                let mut t = try!(n.parse::<String>());
+                t.remove(0);
                 v.push(arena.intern_symbol(t));
             }
             return match v.len() {
@@ -247,7 +249,7 @@ impl Parser {
                     return Err(Error::ParseError(format!("Noun expected following ':'.")));
                 }
                 return Ok(K::Nameref {
-                    name: t,
+                    id: arena.intern_name_id(t),
                     value: box r,
                 });
             }
@@ -284,7 +286,7 @@ impl Parser {
             });
         }
         if self.matches(Token::OpenC).is_some() {
-            let mut args: Vec<String> = Vec::new();
+            let mut args = Args::new();
             if self.matches(Token::OpenB).is_some() {
                 loop {
                     if self.at(Token::CloseB) {
@@ -292,7 +294,7 @@ impl Parser {
                     }
                     let n = try!(self.expect(Token::Name));
                     let t = try!(n.parse::<String>());
-                    args.push(t);
+                    args.push(arena.intern_name_id(t));
                     if self.matches(Token::Semi).is_none() {
                         break;
                     }
@@ -300,18 +302,18 @@ impl Parser {
                 let _ = try!(self.expect(Token::CloseB));
             }
             let r = try!(self.parse_list(arena, Some(Token::CloseC)));
-            if args.is_empty() {
+            if args.len() == 0 {
                 let mut names: Vec<u16> = Vec::new();
                 r.find_names(&mut names);
                 if names.contains(&arena.name_id("z")) {
-                    args.push(String::from("x"));
-                    args.push(String::from("y"));
-                    args.push(String::from("z"));
+                    args.push(arena.intern_name_id(String::from("x")));
+                    args.push(arena.intern_name_id(String::from("y")));
+                    args.push(arena.intern_name_id(String::from("z")));
                 } else if names.contains(&arena.name_id("y")) {
-                    args.push(String::from("x"));
-                    args.push(String::from("y"));
+                    args.push(arena.intern_name_id(String::from("x")));
+                    args.push(arena.intern_name_id(String::from("y")));
                 } else if names.contains(&arena.name_id("x")) {
-                    args.push(String::from("x"));
+                    args.push(arena.intern_name_id(String::from("x")));
                 }
             }
             return self.applycallright(arena,

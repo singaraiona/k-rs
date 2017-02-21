@@ -6,7 +6,7 @@ use parse::ktree::K;
 #[derive(PartialEq, Debug, Clone)]
 pub struct Environment {
     pub parent: Option<Rc<RefCell<Environment>>>,
-    pub values: HashMap<String, K>,
+    pub values: HashMap<u16, K>,
 }
 
 impl Environment {
@@ -26,12 +26,12 @@ impl Environment {
         Rc::new(RefCell::new(env))
     }
 
-    pub fn define(&mut self, key: String, value: K) {
+    pub fn define(&mut self, key: u16, value: K) {
         self.values.insert(key, value);
     }
 
-    pub fn get(&self, key: &str) -> Option<K> {
-        match self.values.get(key) {
+    pub fn get(&self, key: u16) -> Option<K> {
+        match self.values.get(&key) {
             Some(val) => Some(val.clone()),
             None => {
                 match self.parent {

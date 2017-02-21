@@ -4,6 +4,7 @@
 extern crate test;
 extern crate k;
 
+use k::parse::ktree::pp;
 use k::exec::i10;
 use std::io::{self, Read, Write};
 use std::str;
@@ -30,7 +31,10 @@ fn main() {
             Ok(n) => {
                 // println!("------ Parse ------ \n{:#?}", n);
                 match i.run(&n, env.clone()) {
-                    Ok(x) => println!("{}", x),
+                    Ok(x) => {
+                        pp(&x, i.arena());
+                        println!("");
+                    }
                     Err(e) => println!("'{}", format!("{:?}", e).to_ascii_lowercase()),
                 }
             }

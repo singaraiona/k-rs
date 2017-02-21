@@ -33,6 +33,11 @@ impl Arena {
         K::Name { value: *self.names.entry(s).or_insert(id) }
     }
 
+    pub fn intern_name_id(&mut self, s: String) -> u16 {
+        let id = self.names.len() as u16;
+        *self.names.entry(s).or_insert(id)
+    }
+
     pub fn name_id(&self, s: &str) -> u16 {
         match self.names.get(s) {
             Some(&id) => id,
@@ -42,6 +47,15 @@ impl Arena {
 
     pub fn id_name(&self, id: u16) -> String {
         for (key, val) in self.names.iter() {
+            if *val == id {
+                return key.clone();
+            }
+        }
+        "".to_string()
+    }
+
+    pub fn id_symbol(&self, id: u16) -> String {
+        for (key, val) in self.symbols.iter() {
             if *val == id {
                 return key.clone();
             }
@@ -215,7 +229,7 @@ impl Interpreter {
                 let e = Environment::new_child(env);
                 for (n, v) in a.iter().zip(cargs) {
                     let x = try!(self.run(&v, e.clone()));
-                    self.define(n, &x, e.clone());
+                    self.define(*n, &x, e.clone());
                 }
                 if stacker::remaining_stack() <= 8013672 {
                     return Err(ExecError::Stack);
@@ -236,17 +250,17 @@ impl Interpreter {
     }
 
     fn define(&mut self,
-              name: &str,
+              id: u16,
               value: &K,
               env: Rc<RefCell<Environment>>)
               -> Result<K, ExecError> {
         let v = try!(self.run(value, env.clone()));
-        env.borrow_mut().define(name.to_string(), v.clone());
+        env.borrow_mut().define(id, v.clone());
         Ok(v)
     }
 
     fn get(&mut self, id: u16, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
-        match env.borrow().get(&self.arena.id_name(id)[..]) {
+        match env.borrow().get(id) {
             Some(n) => Ok(n),
             None => Err(ExecError::Undefined),
         }
@@ -303,12 +317,16 @@ impl Interpreter {
                 };
             }
             K::Condition { list: ref c } => return self.cond(c, env.clone()),
-            K::Nameref { name: ref n, value: ref v } => return self.define(&n[..], v, env.clone()),
+            K::Nameref { id: n, value: ref v } => return self.define(n, v, env.clone()),
             K::Name { value: n } => return self.get(n, env.clone()),
             K::Int { value: v } => return Ok(K::Int { value: v }),
             _ => return Ok(node.clone()),
         };
         Ok(K::Nil)
+    }
+
+    pub fn arena(&self) -> &Arena {
+        &self.arena
     }
 }
 
