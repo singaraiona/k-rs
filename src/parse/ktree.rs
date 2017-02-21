@@ -83,7 +83,7 @@ pub enum K {
     Dict { keys: Vec<K>, values: Vec<K> },
     Nameref { id: u16, value: Box<K> },
     Adverb {
-        kind: String,
+        kind: [u8; 2],
         left: Box<K>,
         verb: Box<K>,
         right: Box<K>,
@@ -166,7 +166,7 @@ pub fn pp(ktree: &K, arena: &Arena) {
             }
         }
         // K::Dict { keys: ref k, values: ref v } => {
-        //     try!(write!(f, "["));
+        //     write!(f, "[");
         //     for (key, val) in k[..k.len() - 1].iter().zip(v.iter()) {
         //         try!(write!(f, "{}:{};", key, val))
         //     }
