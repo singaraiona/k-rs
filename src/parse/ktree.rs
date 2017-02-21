@@ -10,7 +10,7 @@ use std::cell::UnsafeCell;
 pub enum K {
     Name { value: String },
     Bool { value: bool },
-    Symbol { value: String },
+    Symbol { value: u16 },
     Verb { kind: String, args: Vec<K> },
     Ioverb { fd: u8 },
     Int { value: i64 },

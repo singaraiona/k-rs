@@ -2,6 +2,8 @@ use parse::ktree::K;
 use parse::parser::{self, Parser};
 use parse::error::Error as ParseError;
 use exec::error::Error as ExecError;
+use std::collections::HashMap;
+use std::cell::UnsafeCell;
 use std::rc::Rc;
 use std::cell::RefCell;
 use exec::env::Environment;
@@ -9,16 +11,21 @@ use stacker;
 
 #[derive(Debug)]
 pub struct Arena {
-    pub names: UnsafeCell<HashMap<String, u16>>,
-    pub symbols: UnsafeCell<HashMap<String, u16>>,
+    pub names: HashMap<String, u16>,
+    pub symbols: HashMap<String, u16>,
 }
 
 impl Arena {
     pub fn new() -> Arena {
         Arena {
-            names: UnsafeCell::new(HashMap::new()),
-            symbols: UnsafeCell::new(HashMap::new()),
+            names: HashMap::new(),
+            symbols: HashMap::new(),
         }
+    }
+
+    pub fn intern_symbol(&mut self, s: String) -> K {
+        let id = self.symbols.len() as u16;
+        K::Symbol { value: *self.symbols.entry(s).or_insert(id) }
     }
 }
 
@@ -225,7 +232,7 @@ impl Interpreter {
     }
 
     pub fn parse(&mut self, b: &[u8]) -> Result<K, ParseError> {
-        self.parser.parse(b)
+        self.parser.parse(b, &mut self.arena)
     }
 
     pub fn run(&mut self, k: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
@@ -285,5 +292,8 @@ impl Interpreter {
 }
 
 pub fn new() -> Interpreter {
-    Interpreter { parser: parser::new() }
+    Interpreter {
+        parser: parser::new(),
+        arena: Arena::new(),
+    }
 }

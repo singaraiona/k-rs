@@ -5,6 +5,7 @@ use parse::token::{Token, Raw};
 use regex::Regex;
 use std::rc::Rc;
 use std::cell::UnsafeCell;
+use exec::i10::Arena;
 
 pub struct Parser {
     text: String,
@@ -49,9 +50,9 @@ impl Parser {
         self.text = self.text.replace("\n", ";");
     }
 
-    pub fn parse(&mut self, b: &[u8]) -> Result<K, Error> {
+    pub fn parse(&mut self, b: &[u8], arena: &mut Arena) -> Result<K, Error> {
         self.begin(str::from_utf8(b).expect("Invalid input."));
-        self.parse_list(None)
+        self.parse_list(arena, None)
     }
 
     #[inline]
@@ -93,16 +94,16 @@ impl Parser {
         self.at(Token::OpenP) || self.at(Token::OpenC)
     }
 
-    fn applycallright(&mut self, node: K) -> Result<K, Error> {
+    fn applycallright(&mut self, arena: &mut Arena, node: K) -> Result<K, Error> {
         let mut ret = node;
         while self.matches(Token::OpenB).is_some() {
-            let args = try!(self.parse_list(Some(Token::CloseB)));
+            let args = try!(self.parse_list(arena, Some(Token::CloseB)));
             ret = ktree::verb(".", vec![ret, args]);
         }
         Ok(ret)
     }
 
-    fn applyindexright(&mut self, node: K) -> Result<K, Error> {
+    fn applyindexright(&mut self, arena: &mut Arena, node: K) -> Result<K, Error> {
         // if (node.sticky && at(VERB)) {
         //     if self.at(Token::Verb) {
         // 	let x = try!(self.parseNoun());
@@ -112,13 +113,13 @@ impl Parser {
         // }
         let mut r = node;
         while self.matches(Token::OpenB).is_some() {
-            let e = try!(self.parse_list(Some(Token::CloseB)));
+            let e = try!(self.parse_list(arena, Some(Token::CloseB)));
             r = ktree::verb(".", vec![r, e]);
         }
         return Ok(r);
     }
 
-    fn parse_adverb(&mut self, left: K, verb: K) -> Result<K, Error> {
+    fn parse_adverb(&mut self, arena: &mut Arena, left: K, verb: K) -> Result<K, Error> {
         let a = try!(self.expect(Token::Adverb));
         // while self.at(Token::Adverb) {
         //     let b = try!(self.expect(Token::Adverb));
@@ -130,8 +131,8 @@ impl Parser {
         //     a = b;
         // }
         // if (at(OPEN_B)) { return applycallright({ t:9, v:a, kind:verb, l:left }); }
-        let n = try!(self.parse_noun());
-        let right = try!(self.parse_ex(n));
+        let n = try!(self.parse_noun(arena));
+        let right = try!(self.parse_ex(arena, n));
         return Ok(ktree::adverb(a.value(), box left, box verb, box right));
     }
 
@@ -141,7 +142,7 @@ impl Parser {
     }
 
     #[inline]
-    fn parse_noun(&mut self) -> Result<K, Error> {
+    fn parse_noun(&mut self, arena: &mut Arena) -> Result<K, Error> {
         if self.matches(Token::Colon).is_some() {
             return Ok(K::Lambda {
                 args: vec!["x".to_string(), "y".to_string()],
@@ -161,10 +162,11 @@ impl Parser {
                 .chars()
                 .map(|x| K::Int { value: (x as i64) - 0x30 })
                 .collect();
-            return self.applyindexright(K::List {
-                curry: true,
-                values: v,
-            });
+            return self.applyindexright(arena,
+                                        K::List {
+                                            curry: true,
+                                            values: v,
+                                        });
         }
         if self.at(Token::Hexlit) {
             let h = try!(self.expect(Token::Hexlit));
@@ -174,7 +176,7 @@ impl Parser {
             };
         }
         if self.matches(Token::Cond).is_some() {
-            return match try!(self.parse_list(Some(Token::CloseB))) {
+            return match try!(self.parse_list(arena, Some(Token::CloseB))) {
                 K::List { curry: true, values: v } => Ok(K::Condition { list: v }),
                 _ => Err(Error::InvalidCondition),
             };
@@ -187,12 +189,13 @@ impl Parser {
                 v.push(K::Int { value: t });
             }
             return match v.len() {
-                1 => self.applyindexright(v.pop().unwrap()),
+                1 => self.applyindexright(arena, v.pop().unwrap()),
                 _ => {
-                    self.applyindexright(K::List {
-                        curry: true,
-                        values: v,
-                    })
+                    self.applyindexright(arena,
+                                         K::List {
+                                             curry: true,
+                                             values: v,
+                                         })
                 }
             };
         }
@@ -207,7 +210,7 @@ impl Parser {
             //
             if self.at(Token::OpenB) && !self.at(Token::Dict) {
                 let _ = try!(self.expect(Token::OpenB));
-                let r = try!(self.parse_list(Some(Token::CloseB)));
+                let r = try!(self.parse_list(arena, Some(Token::CloseB)));
                 return Ok(ktree::verb(v, vec![r]));
             }
             return Ok(ktree::verb(v, vec![]));
@@ -217,15 +220,16 @@ impl Parser {
             while self.at(Token::Symbol) {
                 let n = try!(self.expect(Token::Symbol));
                 let t = try!(n.parse::<String>());
-                v.push(K::Symbol { value: t });
+                v.push(arena.intern_symbol(t));
             }
             return match v.len() {
-                1 => self.applyindexright(v.pop().unwrap()),
+                1 => self.applyindexright(arena, v.pop().unwrap()),
                 _ => {
-                    self.applyindexright(K::List {
-                        curry: true,
-                        values: v,
-                    })
+                    self.applyindexright(arena,
+                                         K::List {
+                                             curry: true,
+                                             values: v,
+                                         })
                 }
             };
         }
@@ -233,12 +237,12 @@ impl Parser {
             let n = try!(self.expect(Token::Name));
             let t = try!(n.parse::<String>());
             if let Some(x) = self.native(&t) {
-                return self.applycallright(x);
+                return self.applycallright(arena, x);
             }
             if self.matches(Token::Colon).is_some() {
                 let _ = self.matches(Token::Colon).is_some();
-                let n = try!(self.parse_noun());
-                let r = try!(self.parse_ex(n));
+                let n = try!(self.parse_noun(arena));
+                let r = try!(self.parse_ex(arena, n));
                 if r == K::Nil {
                     return Err(Error::ParseError(format!("Noun expected following ':'.")));
                 }
@@ -248,7 +252,7 @@ impl Parser {
                 });
             }
             if self.matches(Token::OpenB).is_some() {
-                let index = try!(self.parse_list(Some(Token::CloseB)));
+                let index = try!(self.parse_list(arena, Some(Token::CloseB)));
                 // if (at(ASSIGN)) { return compoundassign(n, index); }
                 // if (matches(COLON)) { return indexedassign(n, index); }
                 // if (index.length == 0) { index = [NIL]; }
@@ -263,8 +267,8 @@ impl Parser {
                 loop {
                     let key = try!(self.expect(Token::Name));
                     let _ = self.expect(Token::Colon);
-                    let n = try!(self.parse_noun());
-                    let value = try!(self.parse_ex(n));
+                    let n = try!(self.parse_noun(arena));
+                    let value = try!(self.parse_ex(arena, n));
                     let kname = K::Name { value: try!(key.parse::<String>()) };
                     keys.push(kname);
                     values.push(value);
@@ -295,7 +299,7 @@ impl Parser {
                 }
                 let _ = try!(self.expect(Token::CloseB));
             }
-            let r = try!(self.parse_list(Some(Token::CloseC)));
+            let r = try!(self.parse_list(arena, Some(Token::CloseC)));
             if args.is_empty() {
                 let mut names: Vec<String> = Vec::new();
                 r.find_names(&mut names);
@@ -310,28 +314,29 @@ impl Parser {
                     args.push(String::from("x"));
                 }
             }
-            return self.applycallright(K::Lambda {
-                args: args,
-                body: box r,
-            });
+            return self.applycallright(arena,
+                                       K::Lambda {
+                                           args: args,
+                                           body: box r,
+                                       });
         }
         if self.matches(Token::OpenP).is_some() {
-            let n = try!(self.parse_list(Some(Token::CloseP)));
+            let n = try!(self.parse_list(arena, Some(Token::CloseP)));
             return Ok(n);
         }
         Ok(K::Nil)
     }
 
-    fn parse_ex(&mut self, node: K) -> Result<K, Error> {
+    fn parse_ex(&mut self, arena: &mut Arena, node: K) -> Result<K, Error> {
         if node == K::Nil {
             return Ok(K::Nil);
         }
         if self.at(Token::Adverb) {
-            return self.parse_adverb(K::Nil, node);
+            return self.parse_adverb(arena, K::Nil, node);
         }
         if self.at_noun() {
-            let n = try!(self.parse_noun());
-            let p = try!(self.parse_ex(n));
+            let n = try!(self.parse_noun(arena));
+            let p = try!(self.parse_ex(arena, n));
             return match node {
                 K::Verb { kind: v, args: a } => {
                     if a.is_empty() {
@@ -347,23 +352,23 @@ impl Parser {
             let n = try!(self.expect(Token::Verb));
             let v = n.value();
             if self.at(Token::Adverb) {
-                return self.parse_adverb(node, ktree::verb(v, vec![]));
+                return self.parse_adverb(arena, node, ktree::verb(v, vec![]));
             }
-            let x = try!(self.parse_noun());
-            let r = try!(self.parse_ex(x));
+            let x = try!(self.parse_noun(arena));
+            let r = try!(self.parse_ex(arena, x));
             return Ok(ktree::verb(v, vec![node, r]));
         }
         Ok(node)
     }
 
-    fn parse_list(&mut self, terminal: Option<Token>) -> Result<K, Error> {
+    fn parse_list(&mut self, arena: &mut Arena, terminal: Option<Token>) -> Result<K, Error> {
         let mut vec: Vec<K> = Vec::new();
         loop {
             if terminal.is_some() && self.at(terminal.unwrap()) {
                 break;
             }
-            let n = try!(self.parse_noun());
-            match self.parse_ex(n) {
+            let n = try!(self.parse_noun(arena));
+            match self.parse_ex(arena, n) {
                 Ok(a) => vec.push(a),
                 Err(e) => return Err(e),
             }
