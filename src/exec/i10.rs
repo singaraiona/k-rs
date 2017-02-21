@@ -7,8 +7,24 @@ use std::cell::RefCell;
 use exec::env::Environment;
 use stacker;
 
+#[derive(Debug)]
+pub struct Arena {
+    pub names: UnsafeCell<HashMap<String, u16>>,
+    pub symbols: UnsafeCell<HashMap<String, u16>>,
+}
+
+impl Arena {
+    pub fn new() -> Arena {
+        Arena {
+            names: UnsafeCell::new(HashMap::new()),
+            symbols: UnsafeCell::new(HashMap::new()),
+        }
+    }
+}
+
 pub struct Interpreter {
     parser: Parser,
+    arena: Arena,
 }
 
 impl Interpreter {
