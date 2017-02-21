@@ -11,7 +11,7 @@ pub enum K {
     Name { value: u16 },
     Bool { value: bool },
     Symbol { value: u16 },
-    Verb { kind: String, args: Vec<K> },
+    Verb { kind: u8, args: Vec<K> },
     Ioverb { fd: u8 },
     Int { value: i64 },
     Float { value: f64 },
@@ -111,9 +111,9 @@ impl Display for K {
     }
 }
 
-pub fn verb(s: &str, args: Vec<K>) -> K {
+pub fn verb(c: char, args: Vec<K>) -> K {
     K::Verb {
-        kind: s.to_string(),
+        kind: c as u8,
         args: args,
     }
 }

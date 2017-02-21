@@ -256,32 +256,32 @@ impl Interpreter {
         self.parser.parse(b, &mut self.arena)
     }
 
-    pub fn run(&mut self, k: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
+    pub fn run(&mut self, node: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
         // println!("RUN: {:?}", k);
-        match *k {
-            K::Verb { kind: ref k, args: ref a } => {
-                match &k[..] {
-                    "+" => {
+        match *node {
+            K::Verb { kind: k, args: ref a } => {
+                match k as char {
+                    '+' => {
                         let x = try!(self.run(&a[0], env.clone()));
                         let y = try!(self.run(&a[1], env.clone()));
                         return self.add(&x, &y, env.clone());
                     }
-                    "-" => {
+                    '-' => {
                         let x = try!(self.run(&a[0], env.clone()));
                         let y = try!(self.run(&a[1], env.clone()));
                         return self.sub(&x, &y, env.clone());
                     }
-                    "*" => {
+                    '*' => {
                         let x = try!(self.run(&a[0], env.clone()));
                         let y = try!(self.run(&a[1], env.clone()));
                         return self.prod(&x, &y, env.clone());
                     }
-                    "=" => {
+                    '=' => {
                         let x = try!(self.run(&a[0], env.clone()));
                         let y = try!(self.run(&a[1], env.clone()));
                         return self.eq(&x, &y, env.clone());
                     }
-                    "." => {
+                    '.' => {
                         let x = try!(self.run(&a[0], env.clone()));
                         match &a[1] {
                             &K::List { curry: true, values: ref v } => {
@@ -290,7 +290,7 @@ impl Interpreter {
                             _ => return self.call(&x, &a[1..], env.clone()),
                         }
                     }
-                    "@" => {
+                    '@' => {
                         let x = try!(self.run(&a[0], env.clone()));
                         match &a[1] {
                             &K::List { curry: true, values: ref v } => {
@@ -306,7 +306,7 @@ impl Interpreter {
             K::Nameref { name: ref n, value: ref v } => return self.define(&n[..], v, env.clone()),
             K::Name { value: n } => return self.get(n, env.clone()),
             K::Int { value: v } => return Ok(K::Int { value: v }),
-            _ => return Ok(k.clone()),
+            _ => return Ok(node.clone()),
         };
         Ok(K::Nil)
     }

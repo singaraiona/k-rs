@@ -98,7 +98,7 @@ impl Parser {
         let mut ret = node;
         while self.matches(Token::OpenB).is_some() {
             let args = try!(self.parse_list(arena, Some(Token::CloseB)));
-            ret = ktree::verb(".", vec![ret, args]);
+            ret = ktree::verb('.', vec![ret, args]);
         }
         Ok(ret)
     }
@@ -114,7 +114,7 @@ impl Parser {
         let mut r = node;
         while self.matches(Token::OpenB).is_some() {
             let e = try!(self.parse_list(arena, Some(Token::CloseB)));
-            r = ktree::verb(".", vec![r, e]);
+            r = ktree::verb('.', vec![r, e]);
         }
         return Ok(r);
     }
@@ -211,9 +211,9 @@ impl Parser {
             if self.at(Token::OpenB) && !self.at(Token::Dict) {
                 let _ = try!(self.expect(Token::OpenB));
                 let r = try!(self.parse_list(arena, Some(Token::CloseB)));
-                return Ok(ktree::verb(v, vec![r]));
+                return Ok(ktree::verb(v.chars().nth(0).expect("Char expected."), vec![r]));
             }
-            return Ok(ktree::verb(v, vec![]));
+            return Ok(ktree::verb(v.chars().nth(0).expect("Char expected."), vec![]));
         }
         if self.at(Token::Symbol) {
             let mut v: Vec<K> = Vec::new();
@@ -256,7 +256,7 @@ impl Parser {
                 // if (at(ASSIGN)) { return compoundassign(n, index); }
                 // if (matches(COLON)) { return indexedassign(n, index); }
                 // if (index.length == 0) { index = [NIL]; }
-                return Ok(ktree::verb(".", vec![arena.intern_name(t), index]));
+                return Ok(ktree::verb('.', vec![arena.intern_name(t), index]));
             }
             return Ok(arena.intern_name(t));
         }
@@ -340,23 +340,26 @@ impl Parser {
             return match node {
                 K::Verb { kind: v, args: a } => {
                     if a.is_empty() {
-                        Ok(ktree::verb(&v[..], vec![p]))
+                        Ok(ktree::verb(v as char, vec![p]))
                     } else {
-                        Ok(ktree::verb("@", a))
+                        Ok(ktree::verb('@', a))
                     }
                 }
-                x => Ok(ktree::verb("@", vec![x, p])),
+                x => Ok(ktree::verb('@', vec![x, p])),
             };
         }
         if self.at(Token::Verb) {
             let n = try!(self.expect(Token::Verb));
             let v = n.value();
             if self.at(Token::Adverb) {
-                return self.parse_adverb(arena, node, ktree::verb(v, vec![]));
+                return self.parse_adverb(arena,
+                                         node,
+                                         ktree::verb(v.chars().nth(0).expect("Char expected."),
+                                                     vec![]));
             }
             let x = try!(self.parse_noun(arena));
             let r = try!(self.parse_ex(arena, x));
-            return Ok(ktree::verb(v, vec![node, r]));
+            return Ok(ktree::verb(v.chars().nth(0).expect("Char expected."), vec![node, r]));
         }
         Ok(node)
     }
