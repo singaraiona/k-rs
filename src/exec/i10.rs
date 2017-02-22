@@ -207,50 +207,80 @@ impl Interpreter {
             K::Verb { kind: k, args: ref a } => {
                 match k as char {
                     '+' => {
-                        let x = try!(self.run(&a[0], env.clone()));
-                        let y = try!(self.run(&a[1], env.clone()));
-                        return self.add(&x, &y, env.clone());
+                        let h = handle::into_raw(self);
+                        let arg = a.as_slice(&handle::from_raw(h).arena.ktree);
+                        let x = try!(handle::from_raw(h).run(&arg[0], env.clone()));
+                        let y = try!(handle::from_raw(h).run(&arg[1], env.clone()));
+                        return handle::from_raw(h).add(&x, &y, env.clone());
                     }
                     '-' => {
-                        let x = try!(self.run(&a[0], env.clone()));
-                        let y = try!(self.run(&a[1], env.clone()));
-                        return self.sub(&x, &y, env.clone());
+                        let h = handle::into_raw(self);
+                        let arg = a.as_slice(&handle::from_raw(h).arena.ktree);
+                        let x = try!(handle::from_raw(h).run(&arg[0], env.clone()));
+                        let y = try!(handle::from_raw(h).run(&arg[1], env.clone()));
+                        return handle::from_raw(h).sub(&x, &y, env.clone());
                     }
                     '*' => {
-                        let x = try!(self.run(&a[0], env.clone()));
-                        let y = try!(self.run(&a[1], env.clone()));
-                        return self.prod(&x, &y, env.clone());
+                        let h = handle::into_raw(self);
+                        let arg = a.as_slice(&handle::from_raw(h).arena.ktree);
+                        let x = try!(handle::from_raw(h).run(&arg[0], env.clone()));
+                        let y = try!(handle::from_raw(h).run(&arg[1], env.clone()));
+                        return handle::from_raw(h).prod(&x, &y, env.clone());
                     }
                     '=' => {
-                        let x = try!(self.run(&a[0], env.clone()));
-                        let y = try!(self.run(&a[1], env.clone()));
-                        return self.eq(&x, &y, env.clone());
+                        let h = handle::into_raw(self);
+                        let arg = a.as_slice(&handle::from_raw(h).arena.ktree);
+                        let x = try!(handle::from_raw(h).run(&arg[0], env.clone()));
+                        let y = try!(handle::from_raw(h).run(&arg[1], env.clone()));
+                        return handle::from_raw(h).eq(&x, &y, env.clone());
                     }
                     '.' => {
-                        let x = try!(self.run(&a[0], env.clone()));
-                        match &a[1] {
+                        let h = handle::into_raw(self);
+                        let x = try!(handle::from_raw(h)
+                            .run(a.get(0, &handle::from_raw(h).arena.ktree), env.clone()));
+                        match a.get(1, &handle::from_raw(h).arena.ktree) {
                             &K::List { curry: true, values: ref v } => {
-                                let (s1, s2) = handle::split(self);
-                                return s1.call(&x, v.as_slice(&mut s2.arena.ktree), env.clone());
+                                return handle::from_raw(h)
+                                    .call(&x,
+                                          v.as_slice(&mut handle::from_raw(h).arena.ktree),
+                                          env.clone());
                             }
-                            _ => return self.call(&x, &a[1..], env.clone()),
+                            _ => {
+                                return self.call(&x,
+                                                 &a.as_slice(&handle::from_raw(h).arena.ktree)[1..],
+                                                 env.clone())
+                            }
+
                         }
                     }
                     '@' => {
-                        let x = try!(self.run(&a[0], env.clone()));
-                        match &a[1] {
+                        let h = handle::into_raw(self);
+                        let x = try!(handle::from_raw(h)
+                            .run(a.get(0, &handle::from_raw(h).arena.ktree), env.clone()));
+                        match a.get(1, &handle::from_raw(h).arena.ktree) {
                             &K::List { curry: true, values: ref v } => {
-                                let (s1, s2) = handle::split(self);
-                                return s1.apply(&x, v.as_slice(&mut s2.arena.ktree), env.clone());
+                                return handle::from_raw(h)
+                                    .apply(&x,
+                                           v.as_slice(&mut handle::from_raw(h).arena.ktree),
+                                           env.clone());
                             }
-                            _ => return self.apply(&x, &a[1..], env.clone()),
+                            _ => {
+                                return handle::from_raw(h)
+                                    .apply(&x,
+                                           &a.as_slice(&handle::from_raw(h).arena.ktree)[1..],
+                                           env.clone())
+                            }
                         }
                     }
                     _ => (),
                 };
             }
             K::Condition { list: ref c } => return self.cond(c, env.clone()),
-            K::Nameref { id: n, value: ref v } => return self.define(n, v, env.clone()),
+            K::Nameref { id: n, value: ref v } => {
+                let (s1, s2) = handle::split(self);
+                let u = s1.arena.ktree.deref(*v);
+                return s2.define(n, u, env.clone());
+            }
             K::Name { value: n } => return self.get(n, env.clone()),
             K::Int { value: v } => return Ok(K::Int { value: v }),
             _ => return Ok(node.clone()),
