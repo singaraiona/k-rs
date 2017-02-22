@@ -165,7 +165,8 @@ impl Interpreter {
                 if stacker::remaining_stack() <= 8013672 {
                     return Err(ExecError::Stack);
                 }
-                return self.run(b, e.clone());
+                let (s1, s2) = handle::split(self);
+                return s1.run(s2.arena.ktree.deref(*b), e.clone());
             }
             _ => (),
         }

@@ -142,10 +142,11 @@ impl Parser {
     #[inline]
     fn parse_noun(&mut self, arena: &mut Arena) -> Result<K, Error> {
         if self.matches(Token::Colon).is_some() {
+            let b = arena.intern_name("y".to_string());
             return Ok(K::Lambda {
                 args: args![arena.intern_name_id("x".to_string()),
                             arena.intern_name_id("y".to_string())],
-                body: box arena.intern_name("y".to_string()),
+                body: ktree::atom(&mut arena.ktree, b),
             });
         }
         if self.at(Token::Ioverb) {
@@ -305,10 +306,11 @@ impl Parser {
                     args.push(arena.intern_name_id(String::from("x")));
                 }
             }
+            let b = ktree::atom(&mut arena.ktree, r);
             return self.applycallright(arena,
                                        K::Lambda {
                                            args: args,
-                                           body: box r,
+                                           body: b,
                                        });
         }
         if self.matches(Token::OpenP).is_some() {

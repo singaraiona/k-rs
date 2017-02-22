@@ -74,7 +74,7 @@ pub enum K {
     Ioverb { fd: u8 },
     Int { value: i64 },
     Float { value: f64 },
-    Lambda { args: Args, body: Box<K> },
+    Lambda { args: Args, body: Id },
     List { curry: bool, values: Vector<K, Id> },
     Dict { keys: Vec<K>, values: Vec<K> },
     Nameref { id: u16, value: Box<K> },
@@ -144,12 +144,12 @@ pub fn pp(ktree: &K, arena: &Arena) {
             pp(&a[a.len() - 1], arena);
         }
 
-        K::Lambda { args: ref a, body: ref b } => {
-            let _ = write!(f, "{{");
-            a.pp(arena);
-            pp(b, arena);
-            let _ = write!(f, "}}");
-        }
+        // K::Lambda { args: ref a, body: ref b } => {
+        //     let _ = write!(f, "{{");
+        //     a.pp(arena);
+        //     pp(b, arena);
+        //     let _ = write!(f, "}}");
+        // }
         K::List { curry: ref c, values: ref v } => {
             if !c {
                 let _ = write!(f, "(");
@@ -215,6 +215,10 @@ pub fn list(curry: bool, arena: &mut ArenaMem<K, Id>, mut v: Vec<K>) -> K {
         curry: curry,
         values: vec,
     }
+}
+
+pub fn atom(arena: &mut ArenaMem<K, Id>, k: K) -> Id {
+    arena.push(k)
 }
 
 pub type Id = u64;
