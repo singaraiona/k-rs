@@ -70,7 +70,7 @@ pub enum K {
     Name { value: u16 },
     Bool { value: bool },
     Symbol { value: u16 },
-    Verb { kind: u8, args: Vec<K> },
+    Verb { kind: u8, args: Vector<K, Id> },
     Ioverb { fd: u8 },
     Int { value: i64 },
     Float { value: f64 },
