@@ -128,8 +128,9 @@ impl Interpreter {
         Err(ExecError::Type)
     }
 
-    fn cond(&mut self, c: &[K], env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
-        match c {
+    fn cond(&mut self, c: Vector<K, Id>, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
+        let sl = c.as_slice(&self.arena);
+        match sl {
             &[ref e, ref x, ref y] => {
                 match try!(self.run(&e, env.clone())) {
                     K::Bool { value: b } => {
@@ -242,7 +243,7 @@ impl Interpreter {
                     _ => (),
                 };
             }
-            // K::Condition { list: c } => return self.cond(c, env.clone()),
+            K::Condition { list: c } => return self.cond(c, env.clone()),
             K::Nameref { id: n, value: ref v } => return self.define(n, v, env.clone()),
             K::Name { value: n } => return self.get(n, env.clone()),
             K::Int { value: v } => return Ok(K::Int { value: v }),
