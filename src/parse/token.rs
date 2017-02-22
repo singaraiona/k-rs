@@ -13,7 +13,7 @@ lazy_static! {
                                          r"^[+\x2D*%!&|<>=~,^#_$?@.]",             // 6 - VERB 
                                          r"^[+\x2D*%!&|<>=~,^#_$?@.]:",            // 7 - ASSIGN
                                          r"^\d:",                                  // 8 - IOVERB
-                                         r"^['\\/]+:?",                            // 9 - ADVERB
+                                         r"^['\x5c\x2f]+:?",                       // 9 - ADVERB
                                          r"^;",                                    // 10- SEMI
                                          r"^:",                                    // 11- COLON
                                          r"^::",                                   // 12- VIEW 

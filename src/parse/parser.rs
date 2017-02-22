@@ -20,7 +20,7 @@ macro_rules! extract {
 impl Parser {
     fn begin(&mut self, s: &str) {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"(\x22(?:[^\x22\x5C\n]|\.)*\x22)|[a-zA-Z]*(/.*)|([a-z\d\]\)]-\.?\d+)|.")
+            static ref RE: Regex = Regex::new(r"(\x22(?:[^\x22\x5C\n]|\.)*\x22)|[a-zA-Z]*[ ]+(/.*)|([a-z\d\]\)]-\.?\d+)|.")
                                    .unwrap();
         }
         // preserve a string, remove a comment, disambiguate a minus sign.

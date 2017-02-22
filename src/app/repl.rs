@@ -27,7 +27,7 @@ fn main() {
         let k = i.parse(&input[..size - 1]);
         match k {
             Ok(n) => {
-                println!("------ Parse ------ \n{:#?}", n);
+                // println!("------ Parse ------ \n{:#?}", n);
                 match i.run(&n) {
                     Ok(x) => {
                         match x {
