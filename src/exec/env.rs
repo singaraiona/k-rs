@@ -1,44 +1,49 @@
-use std::collections::HashMap;
-use std::rc::Rc;
-use std::cell::RefCell;
-use parse::ktree::K;
 
-#[derive(PartialEq, Debug, Clone)]
+use parse::ktree;
+use exec::otree::{self, Tree};
+
+#[derive(Debug, Clone)]
+pub struct Entry(u16, ktree::Id);
+
+#[derive(Debug)]
 pub struct Environment {
-    pub parent: Option<Rc<RefCell<Environment>>>,
-    pub values: HashMap<u16, K>,
+    pub tree: Tree<Entry>,
 }
 
 impl Environment {
-    pub fn new() -> Rc<RefCell<Environment>> {
-        let env = Environment {
-            parent: None,
-            values: HashMap::with_capacity(100),
-        };
-        Rc::new(RefCell::new(env))
+    pub fn new_root() -> Environment {
+        let s = Tree::with_capacity(10000 as usize);
+        Environment { tree: s }
     }
 
-    pub fn new_child(parent: Rc<RefCell<Environment>>) -> Rc<RefCell<Environment>> {
-        let env = Environment {
-            parent: Some(parent),
-            values: HashMap::with_capacity(100),
-        };
-        Rc::new(RefCell::new(env))
+    pub fn last(&self) -> otree::Id {
+        self.tree.last()
     }
 
-    pub fn define(&mut self, key: u16, value: K) {
-        self.values.insert(key, value);
+    pub fn dump(&self) {
+        self.tree.dump()
     }
 
-    pub fn get(&self, key: u16) -> Option<K> {
-        match self.values.get(&key) {
-            Some(val) => Some(val.clone()),
-            None => {
-                match self.parent {
-                    Some(ref parent) => parent.borrow().get(key),
-                    None => None,
-                }
-            }
+    pub fn len(&self) -> (usize, usize) {
+        self.tree.len()
+    }
+
+    pub fn new_child(&mut self, n: otree::Id) -> otree::Id {
+        self.tree.append_node(n)
+    }
+
+    pub fn define(&mut self, key: u16, value: ktree::Id) {
+        self.tree.insert(Entry(key, value));
+    }
+
+    pub fn get(&self, key: u16, n: otree::Id) -> Option<(ktree::Id, otree::Id)> {
+        match self.tree.get(n, |e| e.0 == key) {
+            Some(x) => Some(((x.0).1, x.1)),
+            None => None,
         }
+    }
+
+    pub fn clean(&mut self) -> usize {
+        self.tree.clean()
     }
 }

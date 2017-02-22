@@ -9,7 +9,6 @@ use k::exec::i10;
 use std::io::{self, Read, Write};
 use std::str;
 use std::ascii::AsciiExt;
-use k::exec::env::Environment;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -20,7 +19,6 @@ fn ps1() {
 
 fn main() {
     let mut i = i10::new();
-    let env = Environment::new();
     let mut input = vec![0u8; 256];
     println!("K\\ {}", VERSION);
     ps1();
@@ -30,7 +28,7 @@ fn main() {
         match k {
             Ok(n) => {
                 // println!("------ Parse ------ \n{:#?}", n);
-                match i.run(&n, env.clone()) {
+                match i.run(&n) {
                     Ok(x) => {
                         pp(&x, i.arena());
                         println!("");
@@ -52,12 +50,12 @@ mod tests {
     #[bench]
     fn fac_k(b: &mut Bencher) {
         let mut i = i10::new();
-        let mut env = Environment::new();
         let code = i.parse(b"fac:{$[x=1;1;x*fac[x-1]]}").unwrap();
-        i.run(&code, env.clone());
+        i.run(&code);
         let f = i.parse(b"fac[5]").unwrap();
         b.iter(|| {
-            let _ = i.run(&f, env.clone());
+            let _ = i.run(&f);
+            i.gc();
         });
     }
 }

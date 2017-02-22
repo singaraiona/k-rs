@@ -80,7 +80,7 @@ pub enum K {
         keys: Vector<K, Id>,
         values: Vector<K, Id>,
     },
-    Nameref { id: u16, value: Id },
+    Nameref { name: u16, value: Id },
     Adverb {
         kind: [u8; 2],
         left: Id,
@@ -124,8 +124,8 @@ pub fn pp(ktree: &K, arena: &Arena) {
         K::Name { value: v } => {
             let _ = write!(f, "{}", arena.id_name(v));
         }
-        K::Bool { value: ref v } => {
-            let _ = write!(f, "{}b", *v as u8);
+        K::Bool { value: v } => {
+            let _ = write!(f, "{}b", v as u8);
         }
         K::Symbol { value: v } => {
             let _ = write!(f, "`{}", arena.id_symbol(v));
@@ -136,23 +136,24 @@ pub fn pp(ktree: &K, arena: &Arena) {
         K::Float { value: v } => {
             let _ = write!(f, "{}", v);
         }
-        // K::Verb { kind: ref v, args: ref a } => {
-        //     if a.len() > 0 {
-        //         pp(&a[0], arena);
-        //     }
-        //     let _ = write!(f, "{}", *v as char);
-        //     for i in 1..a.len() - 1 {
-        //         pp(&a[i], arena);
-        //     }
-        //     pp(&a[a.len() - 1], arena);
-        // }
-        //
-        // K::Lambda { args: ref a, body: ref b } => {
-        //     let _ = write!(f, "{{");
-        //     a.pp(arena);
-        //     pp(b, arena);
-        //     let _ = write!(f, "}}");
-        // }
+        K::Verb { kind: ref v, args: ref a } => {
+            let s = &a.as_slice(&arena.ktree);
+            if s.len() > 0 {
+                pp(&s[0], arena);
+            }
+            let _ = write!(f, "{}", *v as char);
+            for i in 1..s.len() - 1 {
+                pp(&s[i], arena);
+            }
+            pp(&s[s.len() - 1], arena);
+        }
+        K::Lambda { args: ref a, body: ref b } => {
+            let _ = write!(f, "{{");
+            a.pp(arena);
+            let u = arena.ktree.deref(*b);
+            pp(u, arena);
+            let _ = write!(f, "}}");
+        }
         K::List { curry: ref c, values: ref v } => {
             if !c {
                 let _ = write!(f, "(");
@@ -170,22 +171,32 @@ pub fn pp(ktree: &K, arena: &Arena) {
                 pp(v.get(v.len() - 1, &arena.ktree), arena);
             }
         }
-        // K::Dict { keys: ref k, values: ref v } => {
-        //     write!(f, "[");
-        //     for (key, val) in k[..k.len() - 1].iter().zip(v.iter()) {
-        //         try!(write!(f, "{}:{};", key, val))
-        //     }
-        //     write!(f, "{}:{}]", k[k.len() - 1], v[v.len() - 1])
-        // }
-        // K::Condition { list: ref c } => {
-        //     try!(write!(f, "$["));
-        //     for i in 0..c.len() - 1 {
-        //         try!(write!(f, "{};", c[i]))
-        //     }
-        //     write!(f, "{}]", c[c.len() - 1])
-        //
-        // }
-        // K::Nil => Ok(()),
+        K::Dict { keys: ref k, values: ref v } => {
+            write!(f, "[");
+            let u = k.as_slice(&arena.ktree);
+            let m = k.as_slice(&arena.ktree);
+            for (key, val) in u[..u.len() - 1].iter().zip(m) {
+                pp(key, arena);
+                let _ = write!(f, ":");
+                pp(val, arena);
+                let _ = write!(f, ";");
+            }
+            pp(&u[u.len() - 1], arena);
+            let _ = write!(f, ":");
+            pp(&m[m.len() - 1], arena);
+            let _ = write!(f, "]");
+        }
+        K::Condition { list: ref c } => {
+            let l = c.as_slice(&arena.ktree);
+            let _ = write!(f, "$[");
+            for i in 0..l.len() - 1 {
+                pp(&l[i], arena);
+                let _ = write!(f, ";");
+            }
+            pp(&l[l.len() - 1], arena);
+            let _ = write!(f, "]");
+        }
+        K::Nil => (),
         _ => {
             let _ = write!(f, "nyi");
         }

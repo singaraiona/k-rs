@@ -243,7 +243,7 @@ impl Parser {
                     return Err(Error::ParseError(format!("Noun expected following ':'.")));
                 }
                 return Ok(K::Nameref {
-                    id: arena.intern_name_id(t),
+                    name: arena.intern_name_id(t),
                     value: ktree::atom(&mut arena.ktree, r),
                 });
             }
