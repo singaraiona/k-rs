@@ -1,9 +1,9 @@
 
-use parse::ktree;
+use parse::ast;
 use exec::otree::{self, Tree};
 
 #[derive(Debug, Clone)]
-pub struct Entry(u16, ktree::Id);
+pub struct Entry(u16, ast::Id);
 
 #[derive(Debug)]
 pub struct Environment {
@@ -32,11 +32,11 @@ impl Environment {
         self.tree.append_node(n)
     }
 
-    pub fn define(&mut self, key: u16, value: ktree::Id) {
+    pub fn define(&mut self, key: u16, value: ast::Id) {
         self.tree.insert(Entry(key, value));
     }
 
-    pub fn get(&self, key: u16, n: otree::Id) -> Option<(ktree::Id, otree::Id)> {
+    pub fn get(&self, key: u16, n: otree::Id) -> Option<(ast::Id, otree::Id)> {
         match self.tree.get(n, |e| e.0 == key) {
             Some(x) => Some(((x.0).1, x.1)),
             None => None,

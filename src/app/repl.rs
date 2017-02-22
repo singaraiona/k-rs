@@ -4,7 +4,7 @@
 extern crate test;
 extern crate k;
 
-use k::parse::ktree::{K, pp};
+use k::parse::ast::{AST, pp};
 use k::exec::i10;
 use std::io::{self, Read, Write};
 use std::str;
@@ -31,7 +31,7 @@ fn main() {
                 match i.run(&n) {
                     Ok(x) => {
                         match x {
-                            K::Quit => break,
+                            AST::Quit => break,
                             u => {
                                 pp(&u, i.arena());
                                 println!("");

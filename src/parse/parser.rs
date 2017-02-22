@@ -1,18 +1,18 @@
 use std::str;
 use parse::error::Error;
-use parse::ktree::{self, K, Args};
+use parse::ast::{self, AST, Args};
 use parse::token::{Token, Raw};
 use regex::Regex;
 use parse::alloc::Arena;
 
 pub struct Parser {
     text: String,
-    natives: Vec<(String, K)>,
+    natives: Vec<(String, AST)>,
 }
 
 macro_rules! extract {
     ($k:expr) => (match $k {
-        K::Int{value: v} => v,
+        AST::Int{value: v} => v,
         _ => unimplemented!(),
     })
 }
@@ -48,7 +48,7 @@ impl Parser {
         self.text = self.text.replace("\n", ";");
     }
 
-    pub fn parse(&mut self, b: &[u8], arena: &mut Arena) -> Result<K, Error> {
+    pub fn parse(&mut self, b: &[u8], arena: &mut Arena) -> Result<AST, Error> {
         self.begin(str::from_utf8(b).expect("Invalid input."));
         self.parse_list(arena, None)
     }
@@ -92,16 +92,16 @@ impl Parser {
         self.at(Token::OpenP) || self.at(Token::OpenC)
     }
 
-    fn applycallright(&mut self, arena: &mut Arena, node: K) -> Result<K, Error> {
+    fn applycallright(&mut self, arena: &mut Arena, node: AST) -> Result<AST, Error> {
         let mut ret = node;
         while self.matches(Token::OpenB).is_some() {
             let args = try!(self.parse_list(arena, Some(Token::CloseB)));
-            ret = ktree::verb(&mut arena.ktree, '.', vec![ret, args]);
+            ret = ast::verb(&mut arena.ast, '.', vec![ret, args]);
         }
         Ok(ret)
     }
 
-    fn applyindexright(&mut self, arena: &mut Arena, node: K) -> Result<K, Error> {
+    fn applyindexright(&mut self, arena: &mut Arena, node: AST) -> Result<AST, Error> {
         // if (node.sticky && at(VERB)) {
         //     if self.at(Token::Verb) {
         // 	let x = try!(self.parseNoun());
@@ -112,17 +112,17 @@ impl Parser {
         let mut r = node;
         while self.matches(Token::OpenB).is_some() {
             let e = try!(self.parse_list(arena, Some(Token::CloseB)));
-            r = ktree::verb(&mut arena.ktree, '.', vec![r, e]);
+            r = ast::verb(&mut arena.ast, '.', vec![r, e]);
         }
         return Ok(r);
     }
 
-    fn parse_adverb(&mut self, arena: &mut Arena, left: K, verb: K) -> Result<K, Error> {
+    fn parse_adverb(&mut self, arena: &mut Arena, left: AST, verb: AST) -> Result<AST, Error> {
         let a = try!(self.expect(Token::Adverb));
         // while self.at(Token::Adverb) {
         //     let b = try!(self.expect(Token::Adverb));
         //     // here will be parsing adverb from Raw ..
-        //     verb = K::Verb {
+        //     verb = AST::Verb {
         //         kind: verb,
         //         args: vec![verb],
         //     };
@@ -131,67 +131,67 @@ impl Parser {
         // if (at(OPEN_B)) { return applycallright({ t:9, v:a, kind:verb, l:left }); }
         let n = try!(self.parse_noun(arena));
         let right = try!(self.parse_ex(arena, n));
-        return Ok(ktree::adverb(&mut arena.ktree, a.value().to_string(), left, verb, right));
+        return Ok(ast::adverb(&mut arena.ast, a.value().to_string(), left, verb, right));
     }
 
     #[inline]
-    fn native(&self, s: &String) -> Option<K> {
+    fn native(&self, s: &String) -> Option<AST> {
         self.natives.iter().find(|&x| *x.0 == *s).map(|ref x| x.1.clone())
     }
 
     #[inline]
-    fn parse_noun(&mut self, arena: &mut Arena) -> Result<K, Error> {
+    fn parse_noun(&mut self, arena: &mut Arena) -> Result<AST, Error> {
         if self.matches(Token::Quit).is_some() {
-            return Ok(K::Quit);
+            return Ok(AST::Quit);
         }
         if self.matches(Token::Colon).is_some() {
             let b = arena.intern_name("y".to_string());
-            return Ok(K::Lambda {
+            return Ok(AST::Lambda {
                 args: args![arena.intern_name_id("x".to_string()),
                             arena.intern_name_id("y".to_string())],
-                body: ktree::atom(&mut arena.ktree, b),
+                body: ast::atom(&mut arena.ast, b),
             });
         }
         if self.at(Token::Ioverb) {
             let v = try!(self.expect(Token::Ioverb));
             return match v.value()[..1].parse::<u8>() {
-                Ok(x) => Ok(K::Ioverb { fd: x }),
+                Ok(x) => Ok(AST::Ioverb { fd: x }),
                 Err(_) => Err(Error::UnexpectedToken),
             };
         }
         if self.at(Token::Bool) {
             let n = try!(self.expect(Token::Bool));
-            let v: Vec<K> = n.value()[..n.value().len() - 1]
+            let v: Vec<AST> = n.value()[..n.value().len() - 1]
                 .chars()
-                .map(|x| K::Int { value: (x as i64) - 0x30 })
+                .map(|x| AST::Int { value: (x as i64) - 0x30 })
                 .collect();
-            let list = ktree::list(true, &mut arena.ktree, v);
+            let list = ast::list(true, &mut arena.ast, v);
             return self.applyindexright(arena, list);
         }
         if self.at(Token::Hexlit) {
             let h = try!(self.expect(Token::Hexlit));
             return match i64::from_str_radix(&h.value()[2..], 16) {
-                Ok(v) => Ok(K::Int { value: v }),
+                Ok(v) => Ok(AST::Int { value: v }),
                 Err(_) => Err(Error::ParseError(format!("Malformed byte string."))),
             };
         }
         if self.matches(Token::Cond).is_some() {
             return match try!(self.parse_list(arena, Some(Token::CloseB))) {
-                K::List { curry: _, values: v } => Ok(K::Condition { list: v }),
+                AST::List { curry: _, values: v } => Ok(AST::Condition { list: v }),
                 _ => Err(Error::InvalidCondition),
             };
         }
         if self.at(Token::Number) {
-            let mut v: Vec<K> = Vec::new();
+            let mut v: Vec<AST> = Vec::new();
             while self.at(Token::Number) {
                 let n = try!(self.expect(Token::Number));
                 let t = try!(n.parse::<i64>());
-                v.push(K::Int { value: t });
+                v.push(AST::Int { value: t });
             }
             return match v.len() {
                 1 => self.applyindexright(arena, v.pop().unwrap()),
                 _ => {
-                    let list = ktree::list(true, &mut arena.ktree, v);
+                    let list = ast::list(true, &mut arena.ast, v);
                     self.applyindexright(arena, list)
                 }
             };
@@ -208,16 +208,16 @@ impl Parser {
             if self.at(Token::OpenB) && !self.at(Token::Dict) {
                 let _ = try!(self.expect(Token::OpenB));
                 let r = try!(self.parse_list(arena, Some(Token::CloseB)));
-                return Ok(ktree::verb(&mut arena.ktree,
-                                      v.chars().nth(0).expect("Char expected."),
-                                      vec![r]));
+                return Ok(ast::verb(&mut arena.ast,
+                                    v.chars().nth(0).expect("Char expected."),
+                                    vec![r]));
             }
-            return Ok(ktree::verb(&mut arena.ktree,
-                                  v.chars().nth(0).expect("Char expected."),
-                                  vec![]));
+            return Ok(ast::verb(&mut arena.ast,
+                                v.chars().nth(0).expect("Char expected."),
+                                vec![]));
         }
         if self.at(Token::Symbol) {
-            let mut v: Vec<K> = Vec::new();
+            let mut v: Vec<AST> = Vec::new();
             while self.at(Token::Symbol) {
                 let n = try!(self.expect(Token::Symbol));
                 let mut t = try!(n.parse::<String>());
@@ -227,7 +227,7 @@ impl Parser {
             return match v.len() {
                 1 => self.applyindexright(arena, v.pop().unwrap()),
                 _ => {
-                    let list = ktree::list(true, &mut arena.ktree, v);
+                    let list = ast::list(true, &mut arena.ast, v);
                     self.applyindexright(arena, list)
                 }
             };
@@ -242,12 +242,12 @@ impl Parser {
                 let _ = self.matches(Token::Colon).is_some();
                 let n = try!(self.parse_noun(arena));
                 let r = try!(self.parse_ex(arena, n));
-                if r == K::Nil {
+                if r == AST::Nil {
                     return Err(Error::ParseError(format!("Noun expected following ':'.")));
                 }
-                return Ok(K::Nameref {
+                return Ok(AST::Nameref {
                     name: arena.intern_name_id(t),
-                    value: ktree::atom(&mut arena.ktree, r),
+                    value: ast::atom(&mut arena.ast, r),
                 });
             }
             if self.matches(Token::OpenB).is_some() {
@@ -256,13 +256,13 @@ impl Parser {
                 // if (matches(COLON)) { return indexedassign(n, index); }
                 // if (index.length == 0) { index = [NIL]; }
                 let u = arena.intern_name(t);
-                return Ok(ktree::verb(&mut arena.ktree, '.', vec![u, index]));
+                return Ok(ast::verb(&mut arena.ast, '.', vec![u, index]));
             }
             return Ok(arena.intern_name(t));
         }
         if self.matches(Token::OpenB).is_some() {
-            let mut keys: Vec<K> = Vec::new();
-            let mut values: Vec<K> = Vec::new();
+            let mut keys: Vec<AST> = Vec::new();
+            let mut values: Vec<AST> = Vec::new();
             if self.matches(Token::CloseB).is_none() {
                 loop {
                     let key = try!(self.expect(Token::Name));
@@ -278,7 +278,7 @@ impl Parser {
                 }
                 let _ = try!(self.expect(Token::CloseB));
             }
-            return Ok(ktree::dict(&mut arena.ktree, keys, values));
+            return Ok(ast::dict(&mut arena.ast, keys, values));
         }
         if self.matches(Token::OpenC).is_some() {
             let mut args = Args::new();
@@ -299,7 +299,7 @@ impl Parser {
             let r = try!(self.parse_list(arena, Some(Token::CloseC)));
             if args.len() == 0 {
                 let mut names: Vec<u16> = Vec::new();
-                r.find_names(&arena.ktree, &mut names);
+                r.find_names(&arena.ast, &mut names);
                 if names.contains(&arena.name_id("z")) {
                     args.push(arena.intern_name_id(String::from("x")));
                     args.push(arena.intern_name_id(String::from("y")));
@@ -311,9 +311,9 @@ impl Parser {
                     args.push(arena.intern_name_id(String::from("x")));
                 }
             }
-            let b = ktree::atom(&mut arena.ktree, r);
+            let b = ast::atom(&mut arena.ast, r);
             return self.applycallright(arena,
-                                       K::Lambda {
+                                       AST::Lambda {
                                            args: args,
                                            body: b,
                                        });
@@ -322,53 +322,53 @@ impl Parser {
             let n = try!(self.parse_list(arena, Some(Token::CloseP)));
             return Ok(n);
         }
-        Ok(K::Nil)
+        Ok(AST::Nil)
     }
 
-    fn parse_ex(&mut self, arena: &mut Arena, node: K) -> Result<K, Error> {
-        if node == K::Nil {
-            return Ok(K::Nil);
+    fn parse_ex(&mut self, arena: &mut Arena, node: AST) -> Result<AST, Error> {
+        if node == AST::Nil {
+            return Ok(AST::Nil);
         }
         if self.at(Token::Adverb) {
-            return self.parse_adverb(arena, K::Nil, node);
+            return self.parse_adverb(arena, AST::Nil, node);
         }
         if self.at_noun() {
             let n = try!(self.parse_noun(arena));
             let p = try!(self.parse_ex(arena, n));
             return match node {
-                K::Verb { kind: v, args: a } => {
+                AST::Verb { kind: v, args: a } => {
                     if a.len() == 0 {
-                        Ok(ktree::verb(&mut arena.ktree, v as char, vec![p]))
+                        Ok(ast::verb(&mut arena.ast, v as char, vec![p]))
                     } else {
-                        Ok(K::Verb {
+                        Ok(AST::Verb {
                             kind: '@' as u8,
                             args: a,
                         })
                     }
                 }
-                x => Ok(ktree::verb(&mut arena.ktree, '@', vec![x, p])),
+                x => Ok(ast::verb(&mut arena.ast, '@', vec![x, p])),
             };
         }
         if self.at(Token::Verb) {
             let n = try!(self.expect(Token::Verb));
             let v = n.value();
             if self.at(Token::Adverb) {
-                let u = ktree::verb(&mut arena.ktree,
-                                    v.chars().nth(0).expect("Char expected."),
-                                    vec![]);
+                let u = ast::verb(&mut arena.ast,
+                                  v.chars().nth(0).expect("Char expected."),
+                                  vec![]);
                 return self.parse_adverb(arena, node, u);
             }
             let x = try!(self.parse_noun(arena));
             let r = try!(self.parse_ex(arena, x));
-            return Ok(ktree::verb(&mut arena.ktree,
-                                  v.chars().nth(0).expect("Char expected."),
-                                  vec![node, r]));
+            return Ok(ast::verb(&mut arena.ast,
+                                v.chars().nth(0).expect("Char expected."),
+                                vec![node, r]));
         }
         Ok(node)
     }
 
-    fn parse_list(&mut self, arena: &mut Arena, terminal: Option<Token>) -> Result<K, Error> {
-        let mut vec: Vec<K> = Vec::new();
+    fn parse_list(&mut self, arena: &mut Arena, terminal: Option<Token>) -> Result<AST, Error> {
+        let mut vec: Vec<AST> = Vec::new();
         loop {
             if terminal.is_some() && self.at(terminal.unwrap()) {
                 break;
@@ -386,9 +386,9 @@ impl Parser {
             let _ = try!(self.expect(x));
         };
         match vec.len() {
-            0 => Ok(K::Nil),
+            0 => Ok(AST::Nil),
             1 => Ok(vec.pop().unwrap()),
-            _ => Ok(ktree::list(true, &mut arena.ktree, vec)),
+            _ => Ok(ast::list(true, &mut arena.ast, vec)),
         }
     }
 }

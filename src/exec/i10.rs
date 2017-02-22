@@ -1,4 +1,4 @@
-use parse::ktree::{self, K};
+use parse::ast::{self, AST};
 use parse::parser::{self, Parser};
 use parse::error::Error as ParseError;
 use exec::error::Error as ExecError;
@@ -20,125 +20,136 @@ impl Interpreter {
         self.env.clean();
     }
 
-    fn add(&mut self, left: &K, right: &K, id: otree::Id) -> Result<K, ExecError> {
+    fn add(&mut self, left: &AST, right: &AST, id: otree::Id) -> Result<AST, ExecError> {
         match (left, right) {
-            (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a + b }),
-            (&K::List { curry: true, values: ref a }, &K::Int { value: b }) => {
-                let mut r: Vec<K> = Vec::new();
-                let (s1, s2) = handle::split(self);
-                for x in a.iter(&s1.arena.ktree) {
-                    r.push(try!(s2.add(x, &K::Int { value: b }, id)));
-                }
-                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
+            (&AST::Int { value: a }, &AST::Int { value: b }) => {
+                return Ok(AST::Int { value: a + b })
             }
-            (&K::Int { value: a }, &K::List { curry: true, values: ref b }) => {
-                let mut r: Vec<K> = Vec::new();
+            (&AST::List { curry: true, values: ref a }, &AST::Int { value: b }) => {
+                let mut r: Vec<AST> = Vec::new();
                 let (s1, s2) = handle::split(self);
-                for x in b.iter(&s1.arena.ktree) {
-                    r.push(try!(s2.add(x, &K::Int { value: a }, id)));
+                for x in a.iter(&s1.arena.ast) {
+                    r.push(try!(s2.add(x, &AST::Int { value: b }, id)));
                 }
-                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
+                return Ok(ast::list(true, &mut s1.arena.ast, r));
             }
-            (&K::List { curry: true, values: ref a }, &K::List { curry: true, values: ref b }) => {
+            (&AST::Int { value: a }, &AST::List { curry: true, values: ref b }) => {
+                let mut r: Vec<AST> = Vec::new();
+                let (s1, s2) = handle::split(self);
+                for x in b.iter(&s1.arena.ast) {
+                    r.push(try!(s2.add(x, &AST::Int { value: a }, id)));
+                }
+                return Ok(ast::list(true, &mut s1.arena.ast, r));
+            }
+            (&AST::List { curry: true, values: ref a },
+             &AST::List { curry: true, values: ref b }) => {
                 if a.len() != b.len() {
                     return Err(ExecError::Length);
                 }
-                let mut r: Vec<K> = Vec::new();
+                let mut r: Vec<AST> = Vec::new();
                 let (s1, s2) = handle::split(self);
-                for (x, y) in a.iter(&s1.arena.ktree).zip(b.iter(&s1.arena.ktree)) {
+                for (x, y) in a.iter(&s1.arena.ast).zip(b.iter(&s1.arena.ast)) {
                     r.push(try!(s2.add(x, y, id)));
                 }
-                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
+                return Ok(ast::list(true, &mut s1.arena.ast, r));
             }
             _ => (),
         };
         Err(ExecError::Type)
     }
 
-    fn sub(&mut self, left: &K, right: &K, id: otree::Id) -> Result<K, ExecError> {
+    fn sub(&mut self, left: &AST, right: &AST, id: otree::Id) -> Result<AST, ExecError> {
         match (left, right) {
-            (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a - b }),
-            (&K::List { curry: true, values: ref a }, &K::Int { value: b }) => {
-                let mut r: Vec<K> = Vec::new();
-                let (s1, s2) = handle::split(self);
-                for x in a.iter(&s1.arena.ktree) {
-                    r.push(try!(s2.add(x, &K::Int { value: b }, id)));
-                }
-                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
+            (&AST::Int { value: a }, &AST::Int { value: b }) => {
+                return Ok(AST::Int { value: a - b })
             }
-            (&K::Int { value: a }, &K::List { curry: true, values: ref b }) => {
-                let mut r: Vec<K> = Vec::new();
+            (&AST::List { curry: true, values: ref a }, &AST::Int { value: b }) => {
+                let mut r: Vec<AST> = Vec::new();
                 let (s1, s2) = handle::split(self);
-                for x in b.iter(&s1.arena.ktree) {
-                    r.push(try!(s2.add(x, &K::Int { value: a }, id)));
+                for x in a.iter(&s1.arena.ast) {
+                    r.push(try!(s2.add(x, &AST::Int { value: b }, id)));
                 }
-                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
+                return Ok(ast::list(true, &mut s1.arena.ast, r));
             }
-            (&K::List { curry: true, values: ref a }, &K::List { curry: true, values: ref b }) => {
+            (&AST::Int { value: a }, &AST::List { curry: true, values: ref b }) => {
+                let mut r: Vec<AST> = Vec::new();
+                let (s1, s2) = handle::split(self);
+                for x in b.iter(&s1.arena.ast) {
+                    r.push(try!(s2.add(x, &AST::Int { value: a }, id)));
+                }
+                return Ok(ast::list(true, &mut s1.arena.ast, r));
+            }
+            (&AST::List { curry: true, values: ref a },
+             &AST::List { curry: true, values: ref b }) => {
                 if a.len() != b.len() {
                     return Err(ExecError::Length);
                 }
-                let mut r: Vec<K> = Vec::new();
+                let mut r: Vec<AST> = Vec::new();
                 let (s1, s2) = handle::split(self);
-                for (x, y) in a.iter(&s1.arena.ktree).zip(b.iter(&s1.arena.ktree)) {
+                for (x, y) in a.iter(&s1.arena.ast).zip(b.iter(&s1.arena.ast)) {
                     r.push(try!(s2.add(x, y, id)));
                 }
-                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
+                return Ok(ast::list(true, &mut s1.arena.ast, r));
             }
             _ => (),
         };
         Err(ExecError::Type)
     }
 
-    fn prod(&mut self, left: &K, right: &K, id: otree::Id) -> Result<K, ExecError> {
+    fn prod(&mut self, left: &AST, right: &AST, id: otree::Id) -> Result<AST, ExecError> {
         match (left, right) {
-            (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a * b }),
-            (&K::List { curry: true, values: ref a }, &K::Int { value: b }) => {
-                let mut r: Vec<K> = Vec::new();
-                let (s1, s2) = handle::split(self);
-                for x in a.iter(&s1.arena.ktree) {
-                    r.push(try!(s2.add(x, &K::Int { value: b }, id)));
-                }
-                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
+            (&AST::Int { value: a }, &AST::Int { value: b }) => {
+                return Ok(AST::Int { value: a * b })
             }
-            (&K::Int { value: a }, &K::List { curry: true, values: ref b }) => {
-                let mut r: Vec<K> = Vec::new();
+            (&AST::List { curry: true, values: ref a }, &AST::Int { value: b }) => {
+                let mut r: Vec<AST> = Vec::new();
                 let (s1, s2) = handle::split(self);
-                for x in b.iter(&s1.arena.ktree) {
-                    r.push(try!(s2.add(x, &K::Int { value: a }, id)));
+                for x in a.iter(&s1.arena.ast) {
+                    r.push(try!(s2.add(x, &AST::Int { value: b }, id)));
                 }
-                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
+                return Ok(ast::list(true, &mut s1.arena.ast, r));
             }
-            (&K::List { curry: true, values: ref a }, &K::List { curry: true, values: ref b }) => {
+            (&AST::Int { value: a }, &AST::List { curry: true, values: ref b }) => {
+                let mut r: Vec<AST> = Vec::new();
+                let (s1, s2) = handle::split(self);
+                for x in b.iter(&s1.arena.ast) {
+                    r.push(try!(s2.add(x, &AST::Int { value: a }, id)));
+                }
+                return Ok(ast::list(true, &mut s1.arena.ast, r));
+            }
+            (&AST::List { curry: true, values: ref a },
+             &AST::List { curry: true, values: ref b }) => {
                 if a.len() != b.len() {
                     return Err(ExecError::Length);
                 }
-                let mut r: Vec<K> = Vec::new();
+                let mut r: Vec<AST> = Vec::new();
                 let (s1, s2) = handle::split(self);
-                for (x, y) in a.iter(&s1.arena.ktree).zip(b.iter(&s1.arena.ktree)) {
+                for (x, y) in a.iter(&s1.arena.ast).zip(b.iter(&s1.arena.ast)) {
                     r.push(try!(s2.add(x, y, id)));
                 }
-                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
+                return Ok(ast::list(true, &mut s1.arena.ast, r));
             }
             _ => (),
         };
         Err(ExecError::Type)
     }
 
-    fn eq(&mut self, left: &K, right: &K, _: otree::Id) -> Result<K, ExecError> {
+    fn eq(&mut self, left: &AST, right: &AST, _: otree::Id) -> Result<AST, ExecError> {
         match (left, right) {
-            (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Bool { value: a == b }),
+            (&AST::Int { value: a }, &AST::Int { value: b }) => {
+                return Ok(AST::Bool { value: a == b })
+            }
             _ => (),
         };
         Err(ExecError::Type)
     }
 
-    fn cond(&mut self, c: &Vector<K, ktree::Id>, id: otree::Id) -> Result<K, ExecError> {
+    fn cond(&mut self, c: &Vector<AST, ast::Id>, id: otree::Id) -> Result<AST, ExecError> {
         let (s1, s2) = handle::split(self);
-        match c.as_slice(&s1.arena.ktree) {
+        match c.as_slice(&s1.arena.ast) {
             &[ref e, ref x, ref y] => {
                 match try!(s2.exec(&e, id)) {
-                    K::Bool { value: b } => {
+                    AST::Bool { value: b } => {
                         if b {
                             return s2.exec(&x, id);
                         }
@@ -151,9 +162,9 @@ impl Interpreter {
         }
     }
 
-    fn call(&mut self, lambda: &K, cargs: &[K], id: otree::Id) -> Result<K, ExecError> {
+    fn call(&mut self, lambda: &AST, cargs: &[AST], id: otree::Id) -> Result<AST, ExecError> {
         match lambda {
-            &K::Lambda { args: ref a, body: ref b } => {
+            &AST::Lambda { args: ref a, body: ref b } => {
                 let e = self.env.new_child(id);
                 for (n, v) in a.iter().zip(cargs) {
                     let x = try!(self.exec(&v, e));
@@ -163,7 +174,7 @@ impl Interpreter {
                     return Err(ExecError::Stack);
                 }
                 let (s1, s2) = handle::split(self);
-                let u = s2.arena.ktree.deref(*b);
+                let u = s2.arena.ast.deref(*b);
                 return s1.exec(u, e);
             }
             _ => (),
@@ -171,71 +182,71 @@ impl Interpreter {
         Err(ExecError::Call)
     }
 
-    fn apply(&mut self, lambda: &K, args: &[K], id: otree::Id) -> Result<K, ExecError> {
+    fn apply(&mut self, lambda: &AST, args: &[AST], id: otree::Id) -> Result<AST, ExecError> {
         self.call(lambda, args, id)
     }
 
-    fn define(&mut self, key: u16, value: &K, id: otree::Id) -> Result<ktree::Id, ExecError> {
+    fn define(&mut self, key: u16, value: &AST, id: otree::Id) -> Result<ast::Id, ExecError> {
         let v = try!(self.exec(value, id));
         let u = self.store(v);
         self.env.define(key, u);
         Ok(u)
     }
 
-    fn define_id(&mut self, key: u16, value: ktree::Id) -> Result<ktree::Id, ExecError> {
+    fn define_id(&mut self, key: u16, value: ast::Id) -> Result<ast::Id, ExecError> {
         self.env.define(key, value);
         Ok(value)
     }
 
-    fn get(&mut self, key: u16, id: otree::Id) -> Result<&K, ExecError> {
+    fn get(&mut self, key: u16, id: otree::Id) -> Result<&AST, ExecError> {
         match self.env.get(key, id) {
-            Some((n, _)) => Ok(self.arena.ktree.deref(n)),
+            Some((n, _)) => Ok(self.arena.ast.deref(n)),
             None => Err(ExecError::Undefined),
         }
     }
 
     #[inline]
-    fn store(&mut self, k: K) -> ktree::Id {
-        self.arena.ktree.push(k)
+    fn store(&mut self, ast: AST) -> ast::Id {
+        self.arena.ast.push(ast)
     }
 
-    pub fn parse(&mut self, b: &[u8]) -> Result<K, ParseError> {
+    pub fn parse(&mut self, b: &[u8]) -> Result<AST, ParseError> {
         self.parser.parse(b, &mut self.arena)
     }
 
-    pub fn run(&mut self, node: &K) -> Result<K, ExecError> {
+    pub fn run(&mut self, node: &AST) -> Result<AST, ExecError> {
         let id = self.env.last();
         self.exec(node, id)
     }
 
-    fn exec(&mut self, node: &K, id: otree::Id) -> Result<K, ExecError> {
+    fn exec(&mut self, node: &AST, id: otree::Id) -> Result<AST, ExecError> {
         match *node {
-            K::Verb { kind: k, args: ref a } => {
+            AST::Verb { kind: k, args: ref a } => {
                 match k as char {
                     '+' => {
                         let h = handle::into_raw(self);
-                        let arg = a.as_slice(&handle::from_raw(h).arena.ktree);
+                        let arg = a.as_slice(&handle::from_raw(h).arena.ast);
                         let x = try!(handle::from_raw(h).exec(&arg[0], id));
                         let y = try!(handle::from_raw(h).exec(&arg[1], id));
                         return handle::from_raw(h).add(&x, &y, id);
                     }
                     '-' => {
                         let h = handle::into_raw(self);
-                        let arg = a.as_slice(&handle::from_raw(h).arena.ktree);
+                        let arg = a.as_slice(&handle::from_raw(h).arena.ast);
                         let x = try!(handle::from_raw(h).exec(&arg[0], id));
                         let y = try!(handle::from_raw(h).exec(&arg[1], id));
                         return handle::from_raw(h).sub(&x, &y, id);
                     }
                     '*' => {
                         let h = handle::into_raw(self);
-                        let arg = a.as_slice(&handle::from_raw(h).arena.ktree);
+                        let arg = a.as_slice(&handle::from_raw(h).arena.ast);
                         let x = try!(handle::from_raw(h).exec(&arg[0], id));
                         let y = try!(handle::from_raw(h).exec(&arg[1], id));
                         return handle::from_raw(h).prod(&x, &y, id);
                     }
                     '=' => {
                         let h = handle::into_raw(self);
-                        let arg = a.as_slice(&handle::from_raw(h).arena.ktree);
+                        let arg = a.as_slice(&handle::from_raw(h).arena.ast);
                         let x = try!(handle::from_raw(h).exec(&arg[0], id));
                         let y = try!(handle::from_raw(h).exec(&arg[1], id));
                         return handle::from_raw(h).eq(&x, &y, id);
@@ -243,15 +254,15 @@ impl Interpreter {
                     '.' => {
                         let h = handle::into_raw(self);
                         let x = try!(handle::from_raw(h)
-                            .exec(a.get(0, &handle::from_raw(h).arena.ktree), id));
-                        match a.get(1, &handle::from_raw(h).arena.ktree) {
-                            &K::List { curry: true, values: ref v } => {
+                            .exec(a.get(0, &handle::from_raw(h).arena.ast), id));
+                        match a.get(1, &handle::from_raw(h).arena.ast) {
+                            &AST::List { curry: true, values: ref v } => {
                                 return handle::from_raw(h)
-                                    .call(&x, v.as_slice(&mut handle::from_raw(h).arena.ktree), id);
+                                    .call(&x, v.as_slice(&mut handle::from_raw(h).arena.ast), id);
                             }
                             _ => {
                                 return self.call(&x,
-                                                 &a.as_slice(&handle::from_raw(h).arena.ktree)[1..],
+                                                 &a.as_slice(&handle::from_raw(h).arena.ast)[1..],
                                                  id)
                             }
 
@@ -260,39 +271,35 @@ impl Interpreter {
                     '@' => {
                         let h = handle::into_raw(self);
                         let x = try!(handle::from_raw(h)
-                            .exec(a.get(0, &handle::from_raw(h).arena.ktree), id));
-                        match a.get(1, &handle::from_raw(h).arena.ktree) {
-                            &K::List { curry: true, values: ref v } => {
+                            .exec(a.get(0, &handle::from_raw(h).arena.ast), id));
+                        match a.get(1, &handle::from_raw(h).arena.ast) {
+                            &AST::List { curry: true, values: ref v } => {
                                 return handle::from_raw(h)
-                                    .apply(&x,
-                                           v.as_slice(&mut handle::from_raw(h).arena.ktree),
-                                           id);
+                                    .apply(&x, v.as_slice(&mut handle::from_raw(h).arena.ast), id);
                             }
                             _ => {
                                 return handle::from_raw(h)
-                                    .apply(&x,
-                                           &a.as_slice(&handle::from_raw(h).arena.ktree)[1..],
-                                           id)
+                                    .apply(&x, &a.as_slice(&handle::from_raw(h).arena.ast)[1..], id)
                             }
                         }
                     }
                     _ => (),
                 };
             }
-            K::Condition { list: ref c } => return self.cond(c, id),
-            K::Nameref { name: n, value: v } => {
+            AST::Condition { list: ref c } => return self.cond(c, id),
+            AST::Nameref { name: n, value: v } => {
                 let (s1, s2) = handle::split(self);
                 let _ = try!(s2.define_id(n, v));
-                return Ok(s1.arena.ktree.deref(v).clone());
+                return Ok(s1.arena.ast.deref(v).clone());
             }
-            K::Name { value: n } => {
+            AST::Name { value: n } => {
                 let u = try!(self.get(n, id));
                 return Ok(u.clone());
             }
-            K::Int { value: v } => return Ok(K::Int { value: v }),
+            AST::Int { value: v } => return Ok(AST::Int { value: v }),
             _ => return Ok(node.clone()),
         };
-        Ok(K::Nil)
+        Ok(AST::Nil)
     }
 
     pub fn arena(&self) -> &Arena {
