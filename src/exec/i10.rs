@@ -1,4 +1,4 @@
-use parse::ktree::K;
+use parse::ktree::{self, K};
 use parse::parser::{self, Parser};
 use parse::error::Error as ParseError;
 use exec::error::Error as ExecError;
@@ -7,6 +7,7 @@ use std::cell::RefCell;
 use exec::env::Environment;
 use parse::alloc::Arena;
 use stacker;
+use handle;
 
 pub struct Interpreter {
     parser: Parser,
@@ -19,36 +20,30 @@ impl Interpreter {
             (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a + b }),
             (&K::List { curry: true, values: ref a }, &K::Int { value: b }) => {
                 let mut r: Vec<K> = Vec::new();
-                for x in a.iter() {
-                    r.push(try!(self.add(x, &K::Int { value: b }, env.clone())));
+                let (s1, s2) = handle::split(self);
+                for x in a.iter(&s1.arena.ktree) {
+                    r.push(try!(s2.add(x, &K::Int { value: b }, env.clone())));
                 }
-                return Ok(K::List {
-                    curry: true,
-                    values: r,
-                });
+                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
             }
             (&K::Int { value: a }, &K::List { curry: true, values: ref b }) => {
                 let mut r: Vec<K> = Vec::new();
-                for x in b.iter() {
-                    r.push(try!(self.add(x, &K::Int { value: a }, env.clone())));
+                let (s1, s2) = handle::split(self);
+                for x in b.iter(&s1.arena.ktree) {
+                    r.push(try!(s2.add(x, &K::Int { value: a }, env.clone())));
                 }
-                return Ok(K::List {
-                    curry: true,
-                    values: r,
-                });
+                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
             }
             (&K::List { curry: true, values: ref a }, &K::List { curry: true, values: ref b }) => {
                 if a.len() != b.len() {
                     return Err(ExecError::Length);
                 }
                 let mut r: Vec<K> = Vec::new();
-                for (x, y) in a.iter().zip(b.iter()) {
-                    r.push(try!(self.add(x, y, env.clone())));
+                let (s1, s2) = handle::split(self);
+                for (x, y) in a.iter(&s1.arena.ktree).zip(b.iter(&s1.arena.ktree)) {
+                    r.push(try!(s2.add(x, y, env.clone())));
                 }
-                return Ok(K::List {
-                    curry: true,
-                    values: r,
-                });
+                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
             }
             _ => (),
         };
@@ -60,36 +55,30 @@ impl Interpreter {
             (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a - b }),
             (&K::List { curry: true, values: ref a }, &K::Int { value: b }) => {
                 let mut r: Vec<K> = Vec::new();
-                for x in a.iter() {
-                    r.push(try!(self.sub(x, &K::Int { value: b }, env.clone())));
+                let (s1, s2) = handle::split(self);
+                for x in a.iter(&s1.arena.ktree) {
+                    r.push(try!(s2.sub(x, &K::Int { value: b }, env.clone())));
                 }
-                return Ok(K::List {
-                    curry: true,
-                    values: r,
-                });
+                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
             }
             (&K::Int { value: a }, &K::List { curry: true, values: ref b }) => {
                 let mut r: Vec<K> = Vec::new();
-                for x in b.iter() {
-                    r.push(try!(self.sub(x, &K::Int { value: a }, env.clone())));
+                let (s1, s2) = handle::split(self);
+                for x in b.iter(&s1.arena.ktree) {
+                    r.push(try!(s2.sub(x, &K::Int { value: a }, env.clone())));
                 }
-                return Ok(K::List {
-                    curry: true,
-                    values: r,
-                });
+                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
             }
             (&K::List { curry: true, values: ref a }, &K::List { curry: true, values: ref b }) => {
                 if a.len() != b.len() {
                     return Err(ExecError::Length);
                 }
                 let mut r: Vec<K> = Vec::new();
-                for (x, y) in a.iter().zip(b.iter()) {
-                    r.push(try!(self.sub(x, y, env.clone())));
+                let (s1, s2) = handle::split(self);
+                for (x, y) in a.iter(&s1.arena.ktree).zip(b.iter(&s1.arena.ktree)) {
+                    r.push(try!(s2.sub(x, y, env.clone())));
                 }
-                return Ok(K::List {
-                    curry: true,
-                    values: r,
-                });
+                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
             }
             _ => (),
         };
@@ -101,36 +90,30 @@ impl Interpreter {
             (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Int { value: a * b }),
             (&K::List { curry: true, values: ref a }, &K::Int { value: b }) => {
                 let mut r: Vec<K> = Vec::new();
-                for x in a.iter() {
-                    r.push(try!(self.prod(x, &K::Int { value: b }, env.clone())));
+                let (s1, s2) = handle::split(self);
+                for x in a.iter(&s1.arena.ktree) {
+                    r.push(try!(s2.prod(x, &K::Int { value: b }, env.clone())));
                 }
-                return Ok(K::List {
-                    curry: true,
-                    values: r,
-                });
+                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
             }
             (&K::Int { value: a }, &K::List { curry: true, values: ref b }) => {
                 let mut r: Vec<K> = Vec::new();
-                for x in b.iter() {
-                    r.push(try!(self.prod(x, &K::Int { value: a }, env.clone())));
+                let (s1, s2) = handle::split(self);
+                for x in b.iter(&s1.arena.ktree) {
+                    r.push(try!(s2.prod(x, &K::Int { value: a }, env.clone())));
                 }
-                return Ok(K::List {
-                    curry: true,
-                    values: r,
-                });
+                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
             }
             (&K::List { curry: true, values: ref a }, &K::List { curry: true, values: ref b }) => {
                 if a.len() != b.len() {
                     return Err(ExecError::Length);
                 }
                 let mut r: Vec<K> = Vec::new();
-                for (x, y) in a.iter().zip(b.iter()) {
-                    r.push(try!(self.prod(x, y, env.clone())));
+                let (s1, s2) = handle::split(self);
+                for (x, y) in a.iter(&s1.arena.ktree).zip(b.iter(&s1.arena.ktree)) {
+                    r.push(try!(s2.prod(x, y, env.clone())));
                 }
-                return Ok(K::List {
-                    curry: true,
-                    values: r,
-                });
+                return Ok(ktree::list(true, &mut s1.arena.ktree, r));
             }
             _ => (),
         };
@@ -238,28 +221,28 @@ impl Interpreter {
                         let y = try!(self.run(&a[1], env.clone()));
                         return self.eq(&x, &y, env.clone());
                     }
-                    '.' => {
-                        let x = try!(self.run(&a[0], env.clone()));
-                        match &a[1] {
-                            &K::List { curry: true, values: ref v } => {
-                                return self.call(&x, &v[..], env.clone())
-                            }
-                            _ => return self.call(&x, &a[1..], env.clone()),
-                        }
-                    }
-                    '@' => {
-                        let x = try!(self.run(&a[0], env.clone()));
-                        match &a[1] {
-                            &K::List { curry: true, values: ref v } => {
-                                return self.apply(&x, &v[..], env.clone())
-                            }
-                            _ => return self.apply(&x, &a[1..], env.clone()),                        
-                        }
-                    }
+                    // '.' => {
+                    //     let x = try!(self.run(&a[0], env.clone()));
+                    //     match &a[1] {
+                    //         &K::List { curry: true, values: ref v } => {
+                    //             return self.call(&x, &v[..], env.clone())
+                    //         }
+                    //         _ => return self.call(&x, &a[1..], env.clone()),
+                    //     }
+                    // }
+                    // '@' => {
+                    //     let x = try!(self.run(&a[0], env.clone()));
+                    //     match &a[1] {
+                    //         &K::List { curry: true, values: ref v } => {
+                    //             return self.apply(&x, &v[..], env.clone())
+                    //         }
+                    //         _ => return self.apply(&x, &a[1..], env.clone()),
+                    //     }
+                    // }
                     _ => (),
                 };
             }
-            K::Condition { list: ref c } => return self.cond(c, env.clone()),
+            // K::Condition { list: c } => return self.cond(c, env.clone()),
             K::Nameref { id: n, value: ref v } => return self.define(n, v, env.clone()),
             K::Name { value: n } => return self.get(n, env.clone()),
             K::Int { value: v } => return Ok(K::Int { value: v }),

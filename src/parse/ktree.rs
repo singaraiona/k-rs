@@ -2,6 +2,7 @@ use std::mem;
 use std::ops::Index;
 use std::slice::Iter;
 use parse::alloc::Arena;
+use parse::arena::ArenaMem;
 use parse::vector::Vector;
 use std::io::{stdout, Write};
 
@@ -74,8 +75,7 @@ pub enum K {
     Int { value: i64 },
     Float { value: f64 },
     Lambda { args: Args, body: Box<K> },
-    List { curry: bool, values: Vec<K> },
-    Vector { curry: bool, values: Vector<K, Id> },
+    List { curry: bool, values: Vector<K, Id> },
     Dict { keys: Vec<K>, values: Vec<K> },
     Nameref { id: u16, value: Box<K> },
     Adverb {
@@ -84,20 +84,26 @@ pub enum K {
         verb: Box<K>,
         right: Box<K>,
     },
-    Condition { list: Vec<K> },
+    Condition { list: Vector<K, Id> },
     Nil,
 }
 
 impl K {
-    pub fn find_names(&self, v: &mut Vec<u16>) -> usize {
+    pub fn find_names(&self, arena: &ArenaMem<K, Id>, v: &mut Vec<u16>) -> usize {
         match *self {
             K::Name { value: n } => {
                 v.push(n);
                 1
             }
-            K::Verb { kind: _, args: ref x } => x.iter().fold(0, |a, ref i| a + i.find_names(v)),
-            K::Condition { list: ref x } => x.iter().fold(0, |a, ref i| a + i.find_names(v)),
-            K::List { curry: _, values: ref x } => x.iter().fold(0, |a, ref i| a + i.find_names(v)),
+            K::Verb { kind: _, args: ref x } => {
+                x.iter().fold(0, |a, ref i| a + i.find_names(arena, v))
+            }
+            K::Condition { list: ref x } => {
+                x.iter(&arena).fold(0, |a, ref i| a + i.find_names(arena, v))
+            }
+            K::List { curry: _, values: ref x } => {
+                x.iter(&arena).fold(0, |a, ref i| a + i.find_names(arena, v))
+            }
             _ => 0,
         }
     }
@@ -148,17 +154,17 @@ pub fn pp(ktree: &K, arena: &Arena) {
             if !c {
                 let _ = write!(f, "(");
                 for i in 0..v.len() - 1 {
-                    pp(&v[i], arena);
+                    pp(v.get(i, &arena.ktree), arena);
                     let _ = write!(f, ";");
                 }
-                pp(&v[v.len() - 1], arena);
+                pp(v.get(v.len() - 1, &arena.ktree), arena);
                 let _ = write!(f, ")");
             } else {
                 for i in 0..v.len() - 1 {
-                    pp(&v[i], arena);
+                    pp(v.get(i, &arena.ktree), arena);
                     let _ = write!(f, " ");
                 }
-                pp(&v[v.len() - 1], arena);
+                pp(v.get(v.len() - 1, &arena.ktree), arena);
             }
         }
         // K::Dict { keys: ref k, values: ref v } => {
@@ -200,5 +206,15 @@ pub fn adverb(s: String, left: Box<K>, verb: Box<K>, right: Box<K>) -> K {
     }
 }
 
+pub fn list(curry: bool, arena: &mut ArenaMem<K, Id>, mut v: Vec<K>) -> K {
+    let vec = arena.alloc_vec::<K>(v.len());
+    for u in vec.as_slice_mut(arena) {
+        *u = v.remove(0);
+    }
+    K::List {
+        curry: curry,
+        values: vec,
+    }
+}
 
 pub type Id = u64;

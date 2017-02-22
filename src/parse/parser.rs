@@ -102,7 +102,6 @@ impl Parser {
     }
 
     fn applyindexright(&mut self, arena: &mut Arena, node: K) -> Result<K, Error> {
-        println!("Vector: {:?}", node);
         // if (node.sticky && at(VERB)) {
         //     if self.at(Token::Verb) {
         // 	let x = try!(self.parseNoun());
@@ -162,11 +161,8 @@ impl Parser {
                 .chars()
                 .map(|x| K::Int { value: (x as i64) - 0x30 })
                 .collect();
-            return self.applyindexright(arena,
-                                        K::List {
-                                            curry: true,
-                                            values: v,
-                                        });
+            let list = ktree::list(true, &mut arena.ktree, v);
+            return self.applyindexright(arena, list);
         }
         if self.at(Token::Hexlit) {
             let h = try!(self.expect(Token::Hexlit));
@@ -190,16 +186,9 @@ impl Parser {
             }
             return match v.len() {
                 1 => self.applyindexright(arena, v.pop().unwrap()),
-                x => {
-                    let vec = arena.ktree.alloc_vec::<K>(x);
-                    for u in vec.as_slice_mut(&mut arena.ktree) {
-                        *u = v.remove(0);
-                    }
-                    self.applyindexright(arena,
-                                         K::Vector {
-                                             curry: true,
-                                             values: vec,
-                                         })
+                _ => {
+                    let list = ktree::list(true, &mut arena.ktree, v);
+                    self.applyindexright(arena, list)
                 }
             };
         }
@@ -230,11 +219,8 @@ impl Parser {
             return match v.len() {
                 1 => self.applyindexright(arena, v.pop().unwrap()),
                 _ => {
-                    self.applyindexright(arena,
-                                         K::List {
-                                             curry: true,
-                                             values: v,
-                                         })
+                    let list = ktree::list(true, &mut arena.ktree, v);
+                    self.applyindexright(arena, list)
                 }
             };
         }
@@ -307,7 +293,7 @@ impl Parser {
             let r = try!(self.parse_list(arena, Some(Token::CloseC)));
             if args.len() == 0 {
                 let mut names: Vec<u16> = Vec::new();
-                r.find_names(&mut names);
+                r.find_names(&arena.ktree, &mut names);
                 if names.contains(&arena.name_id("z")) {
                     args.push(arena.intern_name_id(String::from("x")));
                     args.push(arena.intern_name_id(String::from("y")));
@@ -390,12 +376,7 @@ impl Parser {
         match vec.len() {
             0 => Ok(K::Nil),
             1 => Ok(vec.pop().unwrap()),
-            _ => {
-                Ok(K::List {
-                    curry: true,
-                    values: vec,
-                })
-            }
+            _ => Ok(ktree::list(true, &mut arena.ktree, vec)),
         }
     }
 }
