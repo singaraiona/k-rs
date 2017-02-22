@@ -332,8 +332,11 @@ impl Parser {
         if self.at(Token::Adverb) {
             return self.parse_adverb(arena, AST::Nil, node);
         }
-        if self.at_noun() {
+        if self.at_noun() && !self.at(Token::Ioverb) {
             let n = try!(self.parse_noun(arena));
+            if self.at(Token::Adverb) {
+                return self.parse_adverb(arena, node, n);
+            }
             let p = try!(self.parse_ex(arena, n));
             return match node {
                 AST::Verb { kind: v, args: a } => {
@@ -388,7 +391,7 @@ impl Parser {
         match vec.len() {
             0 => Ok(AST::Nil),
             1 => Ok(vec.pop().unwrap()),
-            _ => Ok(ast::list(true, &mut arena.ast, vec)),
+            _ => Ok(ast::list(false, &mut arena.ast, vec)),
         }
     }
 }
