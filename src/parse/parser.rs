@@ -141,6 +141,9 @@ impl Parser {
 
     #[inline]
     fn parse_noun(&mut self, arena: &mut Arena) -> Result<K, Error> {
+        if self.matches(Token::Quit).is_some() {
+            return Ok(K::Quit);
+        }
         if self.matches(Token::Colon).is_some() {
             let b = arena.intern_name("y".to_string());
             return Ok(K::Lambda {

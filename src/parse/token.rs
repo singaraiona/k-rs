@@ -6,7 +6,7 @@ lazy_static! {
     // Tokens
     static ref TOKENS: Vec<Regex> = vec![r"^[01]+b",                               // 0 - BOOL
                                          r"^0x[a-zA-Z\d]+",                        // 1 - HEXLIT
-                                         r"^-?(0w|0N|\d+\.\d*|\d*\.?\d)",            // 2 - NUMBER
+                                         r"^-?(0w|0N|\d+\.\d*|\d*\.?\d)",          // 2 - NUMBER
                                          r"^[a-z][a-z\d]*",                        // 3 - NAME
                                          r"^`([a-zA-Z0-9.]*)?",                    // 4 - SYMBOL 
                                          r"^\x22(\\.|[^\x5C\x22])*\x22",           // 5 - CHAR

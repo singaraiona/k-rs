@@ -88,6 +88,7 @@ pub enum K {
         right: Id,
     },
     Condition { list: Vector<K, Id> },
+    Quit,
     Nil,
 }
 
@@ -172,9 +173,9 @@ pub fn pp(ktree: &K, arena: &Arena) {
             }
         }
         K::Dict { keys: ref k, values: ref v } => {
-            write!(f, "[");
+            let _ = write!(f, "[");
             let u = k.as_slice(&arena.ktree);
-            let m = k.as_slice(&arena.ktree);
+            let m = v.as_slice(&arena.ktree);
             for (key, val) in u[..u.len() - 1].iter().zip(m) {
                 pp(key, arena);
                 let _ = write!(f, ":");

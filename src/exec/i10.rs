@@ -2,8 +2,6 @@ use parse::ktree::{self, K};
 use parse::parser::{self, Parser};
 use parse::error::Error as ParseError;
 use exec::error::Error as ExecError;
-use std::rc::Rc;
-use std::cell::RefCell;
 use exec::env::Environment;
 use parse::alloc::Arena;
 use parse::vector::Vector;
@@ -127,7 +125,7 @@ impl Interpreter {
         Err(ExecError::Type)
     }
 
-    fn eq(&mut self, left: &K, right: &K, id: otree::Id) -> Result<K, ExecError> {
+    fn eq(&mut self, left: &K, right: &K, _: otree::Id) -> Result<K, ExecError> {
         match (left, right) {
             (&K::Int { value: a }, &K::Int { value: b }) => return Ok(K::Bool { value: a == b }),
             _ => (),
@@ -191,7 +189,7 @@ impl Interpreter {
 
     fn get(&mut self, key: u16, id: otree::Id) -> Result<&K, ExecError> {
         match self.env.get(key, id) {
-            Some((n, o)) => Ok(self.arena.ktree.deref(n)),
+            Some((n, _)) => Ok(self.arena.ktree.deref(n)),
             None => Err(ExecError::Undefined),
         }
     }

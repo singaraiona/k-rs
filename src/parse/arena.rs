@@ -2,11 +2,7 @@ use alloc::raw_vec::RawVec;
 use std::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use std::mem::{self, size_of, transmute};
-use std::default::Default;
-use core::slice::{from_raw_parts_mut, from_raw_parts};
-use core::iter::IntoIterator;
 use std::fmt;
-use std::ops::Add;
 use num::traits::Unsigned;
 use num::traits::{FromPrimitive, ToPrimitive, One, Zero};
 use parse::vector::Vector;
@@ -152,7 +148,7 @@ impl<T, I> ArenaMem<T, I>
         self.mem.reserve(used, size);
 
         // put vector head first
-        let mut v = Vector::<E, I> {
+        let v = Vector::<E, I> {
             first: Zero::zero(),
             len: 0,
             phantom: PhantomData,
