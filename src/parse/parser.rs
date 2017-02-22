@@ -173,7 +173,7 @@ impl Parser {
         }
         if self.matches(Token::Cond).is_some() {
             return match try!(self.parse_list(arena, Some(Token::CloseB))) {
-                K::List { curry: true, values: v } => Ok(K::Condition { list: v }),
+                K::List { curry: _, values: v } => Ok(K::Condition { list: v }),
                 _ => Err(Error::InvalidCondition),
             };
         }

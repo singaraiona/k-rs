@@ -6,6 +6,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use exec::env::Environment;
 use parse::alloc::Arena;
+use parse::vector::Vector;
 use stacker;
 use handle;
 
@@ -128,16 +129,19 @@ impl Interpreter {
         Err(ExecError::Type)
     }
 
-    fn cond(&mut self, c: Vector<K, Id>, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
-        let sl = c.as_slice(&self.arena);
-        match sl {
+    fn cond(&mut self,
+            c: &Vector<K, ktree::Id>,
+            env: Rc<RefCell<Environment>>)
+            -> Result<K, ExecError> {
+        let (s1, s2) = handle::split(self);
+        match c.as_slice(&s1.arena.ktree) {
             &[ref e, ref x, ref y] => {
-                match try!(self.run(&e, env.clone())) {
+                match try!(s2.run(&e, env.clone())) {
                     K::Bool { value: b } => {
                         if b {
-                            return self.run(&x, env.clone());
+                            return s2.run(&x, env.clone());
                         }
-                        return self.run(&y, env.clone());
+                        return s2.run(&y, env.clone());
                     }
                     _ => Err(ExecError::Condition),
                 }
@@ -198,7 +202,6 @@ impl Interpreter {
     }
 
     pub fn run(&mut self, node: &K, env: Rc<RefCell<Environment>>) -> Result<K, ExecError> {
-        // println!("RUN: {:?}", k);
         match *node {
             K::Verb { kind: k, args: ref a } => {
                 match k as char {
@@ -222,28 +225,30 @@ impl Interpreter {
                         let y = try!(self.run(&a[1], env.clone()));
                         return self.eq(&x, &y, env.clone());
                     }
-                    // '.' => {
-                    //     let x = try!(self.run(&a[0], env.clone()));
-                    //     match &a[1] {
-                    //         &K::List { curry: true, values: ref v } => {
-                    //             return self.call(&x, &v[..], env.clone())
-                    //         }
-                    //         _ => return self.call(&x, &a[1..], env.clone()),
-                    //     }
-                    // }
-                    // '@' => {
-                    //     let x = try!(self.run(&a[0], env.clone()));
-                    //     match &a[1] {
-                    //         &K::List { curry: true, values: ref v } => {
-                    //             return self.apply(&x, &v[..], env.clone())
-                    //         }
-                    //         _ => return self.apply(&x, &a[1..], env.clone()),
-                    //     }
-                    // }
+                    '.' => {
+                        let x = try!(self.run(&a[0], env.clone()));
+                        match &a[1] {
+                            &K::List { curry: true, values: ref v } => {
+                                let (s1, s2) = handle::split(self);
+                                return s1.call(&x, v.as_slice(&mut s2.arena.ktree), env.clone());
+                            }
+                            _ => return self.call(&x, &a[1..], env.clone()),
+                        }
+                    }
+                    '@' => {
+                        let x = try!(self.run(&a[0], env.clone()));
+                        match &a[1] {
+                            &K::List { curry: true, values: ref v } => {
+                                let (s1, s2) = handle::split(self);
+                                return s1.apply(&x, v.as_slice(&mut s2.arena.ktree), env.clone());
+                            }
+                            _ => return self.apply(&x, &a[1..], env.clone()),
+                        }
+                    }
                     _ => (),
                 };
             }
-            K::Condition { list: c } => return self.cond(c, env.clone()),
+            K::Condition { list: ref c } => return self.cond(c, env.clone()),
             K::Nameref { id: n, value: ref v } => return self.define(n, v, env.clone()),
             K::Name { value: n } => return self.get(n, env.clone()),
             K::Int { value: v } => return Ok(K::Int { value: v }),
