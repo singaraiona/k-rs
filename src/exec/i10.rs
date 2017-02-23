@@ -193,11 +193,6 @@ impl Interpreter {
         Ok(u)
     }
 
-    fn define_id(&mut self, key: u16, value: ast::Id) -> Result<ast::Id, ExecError> {
-        self.env.define(key, value);
-        Ok(value)
-    }
-
     fn get(&mut self, key: u16, id: otree::Id) -> Result<&AST, ExecError> {
         match self.env.get(key, id) {
             Some((n, _)) => Ok(self.arena.ast.deref(n)),
@@ -311,9 +306,11 @@ impl Interpreter {
             }
             AST::Condition { list: ref c } => return self.cond(c, id),
             AST::Nameref { name: n, value: v } => {
-                let (s1, s2) = handle::split(self);
-                let _ = try!(s2.define_id(n, v));
-                return Ok(*s1.arena.ast.deref(v));
+                let h = handle::into_raw(self);
+                let a = handle::from_raw(h).arena.ast.deref(v);
+                let u = try!(handle::from_raw(h).exec(a, id));
+                let _ = try!(handle::from_raw(h).define(n, &u, id));
+                return Ok(u);
             }
             AST::Name { value: n } => {
                 let u = try!(self.get(n, id));
