@@ -350,7 +350,7 @@ pub fn dict(arena: &mut ArenaMem<AST, Id>, mut keys: Vec<AST>, mut values: Vec<A
     for u in kvec.as_slice_mut(arena) {
         *u = keys.remove(0);
     }
-    let vvec = arena.alloc_vec::<AST>(keys.len());
+    let vvec = arena.alloc_vec::<AST>(values.len());
     for u in vvec.as_slice_mut(arena) {
         *u = values.remove(0);
     }
