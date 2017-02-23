@@ -218,7 +218,10 @@ impl Interpreter {
 
     fn exec(&mut self, node: &AST, id: otree::Id) -> Result<AST, ExecError> {
         match *node {
-            AST::Verb { kind: k, args: ref a } => {
+            AST::Verb { kind: k, args: a } => {
+                if a.as_slice(&self.arena.ast).len() == 0 {
+                    return Ok(AST::Verb { kind: k, args: a });
+                }
                 match k as char {
                     '+' => {
                         let h = handle::into_raw(self);

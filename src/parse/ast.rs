@@ -6,7 +6,6 @@ use std::slice::Iter;
 use parse::alloc::Arena;
 use parse::arena::ArenaMem;
 use parse::vector::Vector;
-use std::io::{stdout, Write};
 use handle;
 
 #[derive(Debug, Clone, Copy)]
@@ -36,15 +35,18 @@ impl Args {
     pub fn iter(&self) -> Iter<u16> {
         self.args.iter()
     }
+}
 
-    fn pp(&self, arena: &Arena) {
-        let mut f = stdout();
-        let _ = write!(f, "[");
-        for i in 0..self.len() - 1 {
-            let _ = write!(f, "{};", arena.id_name(self.args[i]));
+impl<'a> fmt::Display for Land<'a, Args> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (args, arena) = (self.0, self.1);
+        let a = args.args;
+        let l = args.len();
+        try!(write!(f, "["));
+        for i in 0..l - 1 {
+            try!(write!(f, "{};", arena.id_name(a[i])));
         }
-        let _ = write!(f, "{}", arena.id_name(self.args[self.len() - 1]));
-        let _ = write!(f, "]");
+        write!(f, "{}]", arena.id_name(a[l - 1]))
     }
 }
 
@@ -222,112 +224,100 @@ impl PartialEq for AST {
     }
 }
 
-pub fn pp(ast: &AST, arena: &Arena) {
-    let mut f = stdout();
-    match *ast {
-        AST::Name { value: v } => {
-            let _ = write!(f, "{}", arena.id_name(v));
-        }
-        AST::Bool { value: v } => {
-            let _ = write!(f, "{}b", v as u8);
-        }
-        AST::Symbol { value: v } => {
-            let _ = write!(f, "`{}", arena.id_symbol(v));
-        }
-        AST::String { value: ref s } => {
-            let _ = write!(f, "\"{}\"", s.to_string());
-        }
-        AST::Int { value: v } => {
-            let _ = write!(f, "{}", v);
-        }
-        AST::Float { value: v } => {
-            let _ = write!(f, "{}", v);
-        }
-        AST::Verb { kind: ref v, args: ref a } => {
-            let s = &a.as_slice(&arena.ast);
-            if s.len() > 0 {
-                pp(&s[0], arena);
-            }
-            let _ = write!(f, "{}", *v as char);
-            if s.len() > 1 {
-                for i in 1..s.len() - 1 {
-                    pp(&s[i], arena);
+impl<'a> fmt::Display for Land<'a, AST> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (ast, arena) = (self.0, self.1);
+        match *ast {
+            AST::Name { value: v } => write!(f, "{}", arena.id_name(v)),
+            AST::Bool { value: v } => write!(f, "{}b", v as u8),
+            AST::Symbol { value: v } => write!(f, "`{}", arena.id_symbol(v)),
+            AST::String { value: ref s } => write!(f, "\"{}\"", s.to_string()),
+            AST::Int { value: v } => write!(f, "{}", v),
+            AST::Float { value: v } => write!(f, "{}", v),
+            AST::Verb { kind: ref v, args: ref a } => {
+                let s = &a.as_slice(&arena.ast);
+                if s.len() > 0 {
+                    try!(write!(f, "{}", Land(&s[0], arena)));
                 }
-                pp(&s[s.len() - 1], arena);
-            }
-        }
-        AST::Lambda { args: ref a, body: ref b } => {
-            let _ = write!(f, "{{");
-            a.pp(arena);
-            let u = arena.ast.deref(*b);
-            pp(u, arena);
-            let _ = write!(f, "}}");
-        }
-        AST::List { curry: _, values: ref v } => {
-            if v.len() == 0 {
-                let _ = write!(f, "()");
-            } else if v.len() == 1 {
-                let _ = write!(f, ",");
-                pp(v.get(0, &arena.ast), arena);
-            } else {
-                if is_unified(&arena.ast, v) {
-                    for i in 0..v.len() - 1 {
-                        pp(v.get(i, &arena.ast), arena);
-                        let _ = write!(f, " ");
+                try!(write!(f, "{}", *v as char));
+                if s.len() > 1 {
+                    for i in 1..s.len() - 1 {
+                        try!(write!(f, "{}", Land(&s[i], arena)));
                     }
-                    pp(v.get(v.len() - 1, &arena.ast), arena);
+                    try!(write!(f, "{}", Land(&s[s.len() - 1], arena)));
+                }
+                Ok(())
+            }
+            AST::Lambda { args: ref a, body: ref b } => {
+                try!(write!(f, "{{{}", Land(a, arena)));
+                let u = arena.ast.deref(*b);
+                write!(f, "{}}}", Land(u, arena))
+            }
+            AST::List { curry: _, values: ref v } => {
+                if v.len() == 0 {
+                    Ok(())
+                } else if v.len() == 1 {
+                    write!(f, ",{}", Land(v.get(0, &arena.ast), arena))
                 } else {
-                    let _ = write!(f, "(");
-                    let flat = is_flat(&arena.ast, v);
-                    for i in 0..v.len() - 1 {
-                        pp(v.get(i, &arena.ast), arena);
-                        if flat {
-                            let _ = write!(f, ";");
+                    if is_unified(&arena.ast, v) {
+                        for i in 0..v.len() - 1 {
+                            try!(write!(f, "{} ", Land(v.get(i, &arena.ast), arena)));
+                        }
+                        write!(f, "{}", Land(v.get(v.len() - 1, &arena.ast), arena))
+                    } else {
+                        if is_flat(&arena.ast, v) {
+                            try!(write!(f, "("));
+                            for i in 0..v.len() - 1 {
+                                try!(write!(f, "{};", Land(v.get(i, &arena.ast), arena)));
+                            }
+                            write!(f, "{})", Land(v.get(v.len() - 1, &arena.ast), arena))
                         } else {
-                            let _ = write!(f, "\n");
+                            for i in 0..v.len() - 1 {
+                                try!(write!(f, "{}\n", Land(v.get(i, &arena.ast), arena)));
+                            }
+                            write!(f, "{}", Land(v.get(v.len() - 1, &arena.ast), arena))
                         }
                     }
-                    pp(v.get(v.len() - 1, &arena.ast), arena);
-                    let _ = write!(f, ")");
                 }
             }
-        }        
-        AST::Dict { keys: ref k, values: ref v } => {
-            let _ = write!(f, "[");
-            let u = k.as_slice(&arena.ast);
-            let m = v.as_slice(&arena.ast);
-            for (key, val) in u[..u.len() - 1].iter().zip(m) {
-                pp(key, arena);
-                let _ = write!(f, ":");
-                pp(val, arena);
-                let _ = write!(f, ";");
+            AST::Dict { keys: ref k, values: ref v } => {
+                try!(write!(f, "["));
+                let u = k.as_slice(&arena.ast);
+                let m = v.as_slice(&arena.ast);
+                for (key, val) in u[..u.len() - 1].iter().zip(m) {
+                    try!(write!(f, "{}:{};", Land(key, arena), Land(val, arena)));
+                }
+                write!(f,
+                       "{}:{}]",
+                       Land(&u[u.len() - 1], arena),
+                       Land(&m[m.len() - 1], arena))
             }
-            pp(&u[u.len() - 1], arena);
-            let _ = write!(f, ":");
-            pp(&m[m.len() - 1], arena);
-            let _ = write!(f, "]");
-        }
-        AST::Condition { list: ref c } => {
-            let l = c.as_slice(&arena.ast);
-            let _ = write!(f, "$[");
-            for i in 0..l.len() - 1 {
-                pp(&l[i], arena);
-                let _ = write!(f, ";");
+            AST::Condition { list: ref c } => {
+                let l = c.as_slice(&arena.ast);
+                let _ = write!(f, "$[");
+                for i in 0..l.len() - 1 {
+                    try!(write!(f, "{};", Land(&l[i], arena)));
+                }
+                write!(f, "{}]", Land(&l[l.len() - 1], arena))
             }
-            pp(&l[l.len() - 1], arena);
-            let _ = write!(f, "]");
+            AST::Adverb { kind: ref k, left: l, verb: v, right: r } => {
+                write!(f,
+                       "{}{}{}{}",
+                       Land(arena.ast.deref(l), arena),
+                       Land(arena.ast.deref(v), arena),
+                       k,
+                       Land(arena.ast.deref(r), arena))
+            }
+            _ => write!(f, "nyi"),
         }
-        AST::Adverb { kind: ref k, left: l, verb: v, right: r } => {
-            pp(&arena.ast.deref(l), arena);
-            pp(&arena.ast.deref(v), arena);
-            let _ = write!(f, "{}", k);
-            pp(&arena.ast.deref(r), arena);
-        }
-        AST::Nil => (),
-        _ => {
-            let _ = write!(f, "nyi");
-        }
-    };
+    }
+}
+
+pub fn pp(ast: &AST, arena: &Arena) {
+    match ast {
+        &AST::Nil => (),
+        a => println!("{}", Land(a, arena)),
+    }
 }
 
 pub fn verb(arena: &mut ArenaMem<AST, Id>, c: char, args: Vec<AST>) -> AST {
@@ -434,5 +424,7 @@ pub fn is_flat(arena: &ArenaMem<AST, Id>, vec: &Vector<AST, Id>) -> bool {
     }
     true
 }
+
+struct Land<'a, T: 'a>(&'a T, &'a Arena);
 
 pub type Id = u64;

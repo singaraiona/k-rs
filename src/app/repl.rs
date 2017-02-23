@@ -34,7 +34,6 @@ fn main() {
                             AST::Quit => break,
                             u => {
                                 pp(&u, i.arena());
-                                println!("");
                             }
                         }
                     }
