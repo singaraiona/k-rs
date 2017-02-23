@@ -4,7 +4,7 @@
 extern crate test;
 extern crate k;
 
-use k::parse::ast::{AST, pp};
+use k::parse::ast::AST;
 use k::exec::i10;
 use std::io::{self, Read, Write};
 use std::str;
@@ -33,7 +33,7 @@ fn main() {
                         match x {
                             AST::Quit => break,
                             u => {
-                                pp(&u, i.arena());
+                                i.print(&u);
                             }
                         }
                     }

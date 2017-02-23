@@ -343,8 +343,8 @@ impl Interpreter {
         };
     }
 
-    pub fn arena(&self) -> &Arena {
-        &self.arena
+    pub fn print(&self, ast: &AST) {
+        ast::print(ast, &self.arena);
     }
 }
 

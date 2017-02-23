@@ -313,7 +313,7 @@ impl<'a> fmt::Display for Land<'a, AST> {
     }
 }
 
-pub fn pp(ast: &AST, arena: &Arena) {
+pub fn print(ast: &AST, arena: &Arena) {
     match ast {
         &AST::Nil => (),
         a => println!("{}", Land(a, arena)),
