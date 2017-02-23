@@ -308,6 +308,7 @@ impl<'a> fmt::Display for Land<'a, AST> {
                        k,
                        Land(arena.ast.deref(r), arena))
             }
+            AST::Nil => Ok(()),
             _ => write!(f, "nyi"),
         }
     }
