@@ -8,7 +8,7 @@ use parse::arena::ArenaMem;
 use parse::vector::Vector;
 use std::io::{stdout, Write};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Args {
     args: [u16; 8],
     len: u8,
@@ -67,7 +67,7 @@ impl Index<usize> for Args {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Adverb {
     Each,
     OverJoin,
@@ -105,7 +105,7 @@ impl str::FromStr for Adverb {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum AST {
     Name { value: u16 },
     Bool { value: bool },
@@ -119,6 +119,7 @@ pub enum AST {
         curry: bool,
         values: Vector<AST, Id>,
     },
+    Sequence { values: Vector<AST, Id> },
     Dict {
         keys: Vector<AST, Id>,
         values: Vector<AST, Id>,
@@ -153,6 +154,19 @@ impl AST {
             }
             _ => 0,
         }
+    }
+
+    pub fn is_atom(&self) -> bool {
+        match *self {
+            AST::Int { .. } => true,
+            AST::Float { .. } => true,
+            AST::Symbol { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn type_eq(&self, other: &AST) -> bool {
+        self.is_atom() && other.is_atom()
     }
 }
 
@@ -201,22 +215,29 @@ pub fn pp(ast: &AST, arena: &Arena) {
             let _ = write!(f, "}}");
         }
         AST::List { curry: ref c, values: ref v } => {
-            if !c {
-                let _ = write!(f, "(");
-                for i in 0..v.len() - 1 {
-                    pp(v.get(i, &arena.ast), arena);
-                    let _ = write!(f, ";");
-                }
-                pp(v.get(v.len() - 1, &arena.ast), arena);
-                let _ = write!(f, ")");
+            if v.len() == 0 {
+                let _ = write!(f, "()");
+            } else if v.len() == 1 {
+                let _ = write!(f, ",");
+                pp(v.get(0, &arena.ast), arena);
             } else {
-                for i in 0..v.len() - 1 {
-                    pp(v.get(i, &arena.ast), arena);
-                    let _ = write!(f, " ");
+                if unified(&arena.ast, v) {
+                    for i in 0..v.len() - 1 {
+                        pp(v.get(i, &arena.ast), arena);
+                        let _ = write!(f, " ");
+                    }
+                    pp(v.get(v.len() - 1, &arena.ast), arena);
+                } else {
+                    let _ = write!(f, "(");
+                    for i in 0..v.len() - 1 {
+                        pp(v.get(i, &arena.ast), arena);
+                        let _ = write!(f, ";");
+                    }
+                    pp(v.get(v.len() - 1, &arena.ast), arena);
+                    let _ = write!(f, ")");
                 }
-                pp(v.get(v.len() - 1, &arena.ast), arena);
             }
-        }
+        }        
         AST::Dict { keys: ref k, values: ref v } => {
             let _ = write!(f, "[");
             let u = k.as_slice(&arena.ast);
@@ -293,6 +314,14 @@ pub fn list(curry: bool, arena: &mut ArenaMem<AST, Id>, mut v: Vec<AST>) -> AST 
     }
 }
 
+pub fn sequence(arena: &mut ArenaMem<AST, Id>, mut v: Vec<AST>) -> AST {
+    let vec = arena.alloc_vec::<AST>(v.len());
+    for u in vec.as_slice_mut(arena) {
+        *u = v.remove(0);
+    }
+    AST::Sequence { values: vec }
+}
+
 pub fn dict(arena: &mut ArenaMem<AST, Id>, mut keys: Vec<AST>, mut values: Vec<AST>) -> AST {
     let kvec = arena.alloc_vec::<AST>(keys.len());
     for u in kvec.as_slice_mut(arena) {
@@ -310,6 +339,20 @@ pub fn dict(arena: &mut ArenaMem<AST, Id>, mut keys: Vec<AST>, mut values: Vec<A
 
 pub fn atom(arena: &mut ArenaMem<AST, Id>, ast: AST) -> Id {
     arena.push(ast)
+}
+
+pub fn unified(arena: &ArenaMem<AST, Id>, vec: &Vector<AST, Id>) -> bool {
+    let mut it = vec.iter(arena);
+    let o = it.next();
+    if let Some(t) = o {
+        for i in it {
+            if !i.type_eq(t) {
+                return false;
+            }
+        }
+        return true;
+    }
+    false
 }
 
 pub type Id = u64;

@@ -21,7 +21,7 @@ impl Parser {
     fn begin(&mut self, s: &str) {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"(\x22(?:[^\x22\x5C\n]|\.)*\x22)|[a-zA-Z]*[ ]+(/.*)|([a-z\d\]\)]-\.?\d+)|.")
-                                   .unwrap();
+                .unwrap();
         }
         // preserve a string, remove a comment, disambiguate a minus sign.
         self.text = RE.captures_iter(s.trim())
@@ -104,7 +104,7 @@ impl Parser {
     fn applyindexright(&mut self, arena: &mut Arena, node: AST) -> Result<AST, Error> {
         // if (node.sticky && at(VERB)) {
         //     if self.at(Token::Verb) {
-        // 	let x = try!(self.parseNoun());
+        //  let x = try!(self.parseNoun());
         //     x.l = node;
         //     let r = try!(self.parse_ex(parseNoun());
         //     return x;
@@ -136,7 +136,7 @@ impl Parser {
 
     #[inline]
     fn native(&self, s: &String) -> Option<AST> {
-        self.natives.iter().find(|&x| *x.0 == *s).map(|ref x| x.1.clone())
+        self.natives.iter().find(|&x| *x.0 == *s).map(|ref x| x.1)
     }
 
     #[inline]
@@ -320,7 +320,16 @@ impl Parser {
         }
         if self.matches(Token::OpenP).is_some() {
             let n = try!(self.parse_list(arena, Some(Token::CloseP)));
-            return Ok(n);
+            let r = match n {
+                AST::Sequence { values: v } => {
+                    AST::List {
+                        curry: false,
+                        values: v,
+                    }
+                }
+                x => x,
+            };
+            return self.applyindexright(arena, r);
         }
         Ok(AST::Nil)
     }
@@ -391,7 +400,7 @@ impl Parser {
         match vec.len() {
             0 => Ok(AST::Nil),
             1 => Ok(vec.pop().unwrap()),
-            _ => Ok(ast::list(false, &mut arena.ast, vec)),
+            _ => Ok(ast::sequence(&mut arena.ast, vec)),
         }
     }
 }

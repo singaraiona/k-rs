@@ -290,27 +290,31 @@ impl Interpreter {
             AST::Nameref { name: n, value: v } => {
                 let (s1, s2) = handle::split(self);
                 let _ = try!(s2.define_id(n, v));
-                return Ok(s1.arena.ast.deref(v).clone());
+                return Ok(*s1.arena.ast.deref(v));
             }
             AST::Name { value: n } => {
                 let u = try!(self.get(n, id));
-                return Ok(u.clone());
+                return Ok(*u);
             }
             AST::Int { value: v } => return Ok(AST::Int { value: v }),
-            AST::List { curry: c, values: ref v } => {
+            AST::List { curry: c, values: v } => {
                 let (s1, s2) = handle::split(self);
                 for u in v.as_slice_mut(&mut s1.arena.ast) {
                     *u = try!(s2.exec(u, id));
                 }
-                if c {
-                    return Ok(AST::List {
-                        curry: c,
-                        values: v.clone(),
-                    });
-                }
-                return Ok(v.get(v.len() - 1, &s2.arena.ast).clone());
+                return Ok(AST::List {
+                    curry: c,
+                    values: v,
+                });
             } 
-            _ => return Ok(node.clone()),
+            AST::Sequence { values: v } => {
+                let (s1, s2) = handle::split(self);
+                for u in v.as_slice_mut(&mut s1.arena.ast) {
+                    *u = try!(s2.exec(u, id));
+                }
+                return Ok(*v.get(v.len() - 1, &s2.arena.ast));
+            }
+            _ => return Ok(*node),
         };
         Ok(AST::Nil)
     }
