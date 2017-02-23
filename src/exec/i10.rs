@@ -170,12 +170,14 @@ impl Interpreter {
                     let x = try!(self.exec(&v, e));
                     let _ = self.define(*n, &x, e);
                 }
-                if stacker::remaining_stack() <= 8013672 {
-                    return Err(ExecError::Stack);
-                }
-                let (s1, s2) = handle::split(self);
-                let u = s2.arena.ast.deref(*b);
-                return s1.exec(u, e);
+                // if stacker::remaining_stack() <= 8013672 {
+                //     return Err(ExecError::Stack);
+                // }
+                return stacker::maybe_grow(8013672, 4 * 8013672, || {
+                    let (s1, s2) = handle::split(self);
+                    let u = s2.arena.ast.deref(*b);
+                    s1.exec(u, e)
+                });
             }
             _ => (),
         }
