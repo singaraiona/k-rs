@@ -9,7 +9,7 @@ lazy_static! {
                                          r"^-?(0w|0N|\d+\.\d*|\d*\.?\d)",          // 2 - NUMBER
                                          r"^[a-z][a-z\d]*",                        // 3 - NAME
                                          r"^`([a-zA-Z0-9.]*)?",                    // 4 - SYMBOL 
-                                         r"^\x22(\\.|[^\x5C\x22])*\x22",           // 5 - CHAR
+                                         r"^\x22(\\.|[^\x5C\x22])*\x22",           // 5 - STRING
                                          r"^[+\x2D*%!&|<>=~,^#_$?@.]",             // 6 - VERB 
                                          r"^[+\x2D*%!&|<>=~,^#_$?@.]:",            // 7 - ASSIGN
                                          r"^\d:",                                  // 8 - IOVERB
@@ -37,7 +37,7 @@ pub enum Token {
     Number,
     Name,
     Symbol,
-    Char,
+    String,
     Verb,
     Assign,
     Ioverb,

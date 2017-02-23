@@ -88,7 +88,7 @@ impl Parser {
     #[inline]
     fn at_noun(&self) -> bool {
         !self.done() && self.at(Token::Number) || self.at(Token::Name) ||
-        self.at(Token::Symbol) || self.at(Token::Char) || self.at(Token::Cond) ||
+        self.at(Token::Symbol) || self.at(Token::String) || self.at(Token::Cond) ||
         self.at(Token::OpenP) || self.at(Token::OpenC)
     }
 
@@ -231,6 +231,16 @@ impl Parser {
                     self.applyindexright(arena, list)
                 }
             };
+        }
+        if self.at(Token::String) {
+            let s = try!(self.expect(Token::String));
+            let mut t = try!(s.parse::<String>());
+            t.remove(0);
+            t.pop();
+            if let Some(v) = ast::Chars::new(&mut t) {
+                return self.applyindexright(arena, AST::String { value: v });
+            }
+            return Err(Error::StringSize);
         }
         if self.at(Token::Name) {
             let n = try!(self.expect(Token::Name));

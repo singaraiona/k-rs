@@ -106,11 +106,56 @@ impl str::FromStr for Adverb {
     }
 }
 
+// For now it's just u8. Should be coerced to unicode in the future.
+pub struct Chars {
+    raw: [u8; 64],
+    len: u8,
+}
+
+impl Chars {
+    pub fn new(r: &str) -> Option<Self> {
+        if r.len() > 64 {
+            return None;
+        }
+        let mut raw = [0u8; 64];
+        let b = r.as_bytes();
+        for i in 0..b.len() {
+            raw[i] = b[i];
+        }
+        Some(Chars {
+            raw: raw,
+            len: r.len() as u8,
+        })
+    }
+
+    pub fn to_string(&self) -> String {
+        match str::from_utf8(&self.raw[..]) {
+            Ok(s) => s.to_string(),
+            Err(..) => "".to_string(),            
+        }
+    }
+}
+
+impl Copy for Chars {}
+
+impl Clone for Chars {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl fmt::Debug for Chars {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Chars {:?}", &self.raw[..self.len as usize])
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum AST {
-    Name { value: u16 },
     Bool { value: bool },
+    Name { value: u16 },
     Symbol { value: u16 },
+    String { value: Chars },
     Verb { kind: u8, args: Vector<AST, Id> },
     Ioverb { fd: u8 },
     Int { value: i64 },
@@ -188,6 +233,9 @@ pub fn pp(ast: &AST, arena: &Arena) {
         }
         AST::Symbol { value: v } => {
             let _ = write!(f, "`{}", arena.id_symbol(v));
+        }
+        AST::String { value: ref s } => {
+            let _ = write!(f, "\"{}\"", s.to_string());
         }
         AST::Int { value: v } => {
             let _ = write!(f, "{}", v);

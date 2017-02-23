@@ -8,4 +8,5 @@ pub enum Error {
     UnexpectedToken,
     InvalidCondition,
     Type,
+    StringSize,
 }
