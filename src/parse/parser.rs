@@ -185,8 +185,13 @@ impl Parser {
             let mut v: Vec<AST> = Vec::new();
             while self.at(Token::Number) {
                 let n = try!(self.expect(Token::Number));
-                let t = try!(n.parse::<i64>());
-                v.push(AST::Int { value: t });
+                match n.parse::<i64>() {
+                    Ok(x) => v.push(AST::Int { value: x }),
+                    Err(_) => {
+                        let x = try!(n.parse::<f64>());
+                        v.push(AST::Float { value: x });
+                    }
+                }
             }
             return match v.len() {
                 1 => self.applyindexright(arena, v.pop().unwrap()),
