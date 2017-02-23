@@ -134,7 +134,6 @@ pub enum AST {
     },
     Condition { list: Vector<AST, Id> },
     Quit,
-    Empty,
     Nil,
 }
 
@@ -223,7 +222,7 @@ pub fn pp(ast: &AST, arena: &Arena) {
                 let _ = write!(f, ",");
                 pp(v.get(0, &arena.ast), arena);
             } else {
-                if unified(&arena.ast, v) {
+                if is_unified(&arena.ast, v) {
                     for i in 0..v.len() - 1 {
                         pp(v.get(i, &arena.ast), arena);
                         let _ = write!(f, " ");
@@ -231,9 +230,14 @@ pub fn pp(ast: &AST, arena: &Arena) {
                     pp(v.get(v.len() - 1, &arena.ast), arena);
                 } else {
                     let _ = write!(f, "(");
+                    let flat = is_flat(&arena.ast, v);
                     for i in 0..v.len() - 1 {
                         pp(v.get(i, &arena.ast), arena);
-                        let _ = write!(f, ";");
+                        if flat {
+                            let _ = write!(f, ";");
+                        } else {
+                            let _ = write!(f, "\n");
+                        }
                     }
                     pp(v.get(v.len() - 1, &arena.ast), arena);
                     let _ = write!(f, ")");
@@ -272,9 +276,6 @@ pub fn pp(ast: &AST, arena: &Arena) {
             pp(&arena.ast.deref(r), arena);
         }
         AST::Nil => (),
-        AST::Empty => {
-            let _ = write!(f, "()");
-        }
         _ => {
             let _ = write!(f, "nyi");
         }
@@ -289,9 +290,7 @@ pub fn verb(arena: &mut ArenaMem<AST, Id>, c: char, args: Vec<AST>) -> AST {
 }
 
 pub fn adverb(arena: &mut ArenaMem<AST, Id>, s: String, left: AST, verb: AST, right: AST) -> AST {
-    // let b = s.into_bytes();
     let kind = s.parse::<Adverb>().expect("Invalid adverb.");
-
     AST::Adverb {
         kind: kind,
         left: atom(arena, left),
@@ -365,7 +364,7 @@ pub fn atom(arena: &mut ArenaMem<AST, Id>, ast: AST) -> Id {
     arena.push(ast)
 }
 
-pub fn unified(arena: &ArenaMem<AST, Id>, vec: &Vector<AST, Id>) -> bool {
+pub fn is_unified(arena: &ArenaMem<AST, Id>, vec: &Vector<AST, Id>) -> bool {
     let mut it = vec.iter(arena);
     let o = it.next();
     if let Some(t) = o {
@@ -377,6 +376,15 @@ pub fn unified(arena: &ArenaMem<AST, Id>, vec: &Vector<AST, Id>) -> bool {
         return true;
     }
     false
+}
+
+pub fn is_flat(arena: &ArenaMem<AST, Id>, vec: &Vector<AST, Id>) -> bool {
+    for x in vec.iter(arena) {
+        if !x.is_atom() {
+            return false;
+        }
+    }
+    true
 }
 
 pub type Id = u64;
