@@ -177,7 +177,7 @@ impl Parser {
         }
         if self.matches(Token::Cond).is_some() {
             return match try!(self.parse_list(arena, Some(Token::CloseB))) {
-                AST::List { curry: _, values: v } => Ok(AST::Condition { list: v }),
+                AST::Sequence { values: v } => Ok(AST::Condition { list: v }),
                 _ => Err(Error::InvalidCondition),
             };
         }

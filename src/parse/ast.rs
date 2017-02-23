@@ -7,6 +7,7 @@ use parse::alloc::Arena;
 use parse::arena::ArenaMem;
 use parse::vector::Vector;
 use std::io::{stdout, Write};
+use handle;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Args {
@@ -133,6 +134,7 @@ pub enum AST {
     },
     Condition { list: Vector<AST, Id> },
     Quit,
+    Empty,
     Nil,
 }
 
@@ -214,7 +216,7 @@ pub fn pp(ast: &AST, arena: &Arena) {
             pp(u, arena);
             let _ = write!(f, "}}");
         }
-        AST::List { curry: ref c, values: ref v } => {
+        AST::List { curry: _, values: ref v } => {
             if v.len() == 0 {
                 let _ = write!(f, "()");
             } else if v.len() == 1 {
@@ -270,6 +272,9 @@ pub fn pp(ast: &AST, arena: &Arena) {
             pp(&arena.ast.deref(r), arena);
         }
         AST::Nil => (),
+        AST::Empty => {
+            let _ = write!(f, "()");
+        }
         _ => {
             let _ = write!(f, "nyi");
         }
@@ -310,6 +315,25 @@ pub fn list(curry: bool, arena: &mut ArenaMem<AST, Id>, mut v: Vec<AST>) -> AST 
     }
     AST::List {
         curry: curry,
+        values: vec,
+    }
+}
+
+pub fn concat(arena: &mut ArenaMem<AST, Id>,
+              left: &Vector<AST, Id>,
+              right: &Vector<AST, Id>)
+              -> AST {
+
+    let vec = arena.alloc_vec::<AST>(left.len() + right.len());
+    let h = handle::into_raw(arena);
+    let li = left.iter(handle::from_raw(h));
+    let ri = right.iter(handle::from_raw(h));
+    let it = li.chain(ri);
+    for (u, v) in vec.as_slice_mut(handle::from_raw(h)).iter_mut().zip(it) {
+        *u = *v;
+    }
+    AST::List {
+        curry: true,
         values: vec,
     }
 }

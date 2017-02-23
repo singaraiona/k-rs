@@ -283,7 +283,30 @@ impl Interpreter {
                             }
                         }
                     }
-                    _ => (),
+                    ',' => {
+                        let h = handle::into_raw(self);
+                        let arg = a.as_slice(&handle::from_raw(h).arena.ast);
+                        return match arg.len() {
+                            0 => {
+                                Ok(AST::Verb {
+                                    kind: ',' as u8,
+                                    args: ast::vector(&mut handle::from_raw(h).arena.ast,
+                                                      vec![AST::Nil;0]),
+                                })
+                            }
+                            1 => {
+                                let x = try!(handle::from_raw(h).exec(&arg[0], id));
+                                Ok(ast::list(false, &mut handle::from_raw(h).arena.ast, vec![x]))
+                            }
+                            2 => {
+                                let x = try!(handle::from_raw(h).exec(&arg[0], id));
+                                let y = try!(handle::from_raw(h).exec(&arg[1], id));
+                                Ok(ast::list(false, &mut handle::from_raw(h).arena.ast, vec![x, y]))
+                            }
+                            _ => Err(ExecError::Rank),
+                        };
+                    }
+                    _ => return Err(ExecError::Undefined),
                 };
             }
             AST::Condition { list: ref c } => return self.cond(c, id),
@@ -316,7 +339,6 @@ impl Interpreter {
             }
             _ => return Ok(*node),
         };
-        Ok(AST::Nil)
     }
 
     pub fn arena(&self) -> &Arena {
