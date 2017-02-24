@@ -204,7 +204,10 @@ impl Interpreter {
                     t if t == Natives::Type as u8 => {
                         match cargs.len() {
                             0 => Ok(*lambda),
-                            _ => self.type_id(&cargs[0]),
+                            _ => {
+                                let r = try!(self.exec(&cargs[0], id));
+                                self.type_id(&r)
+                            }
                         }
                     }
                     t if t == Natives::Parse as u8 => {
