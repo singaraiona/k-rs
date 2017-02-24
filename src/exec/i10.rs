@@ -167,12 +167,12 @@ impl Interpreter {
         let (s1, s2) = handle::split(self);
         match c.as_slice(&s1.arena.ast) {
             &[ref e, ref x, ref y] => {
-                match try!(s2.exec(&e, id)) {
+                match try!(s2.eval(&e, id)) {
                     AST::Bool { value: b } => {
                         if b {
-                            return s2.exec(&x, id);
+                            return s2.eval(&x, id);
                         }
-                        return s2.exec(&y, id);
+                        return s2.eval(&y, id);
                     }
                     _ => Err(ExecError::Condition),
                 }
@@ -186,7 +186,7 @@ impl Interpreter {
             &AST::Lambda { args: ref a, body: ref b } => {
                 let e = self.env.new_child(id);
                 for (n, v) in a.iter().zip(cargs) {
-                    let x = try!(self.exec(&v, e));
+                    let x = try!(self.eval(&v, e));
                     let _ = self.define(*n, &x, e);
                 }
                 // if stacker::remaining_stack() <= 8013672 {
@@ -195,37 +195,37 @@ impl Interpreter {
                 return stacker::maybe_grow(8013672, 4 * 8013672, || {
                     let (s1, s2) = handle::split(self);
                     let u = s2.arena.ast.deref(*b);
-                    s1.exec(u, e)
+                    s1.eval(u, e)
                 });
             }
             &AST::Native { name: n } => {
                 let t = try!(self.arena.native_id_id(n).ok_or(ExecError::InvalidNativeCall));
                 return match t {
-                    t if t == Natives::Type as u8 => {
+                    _ if t == Natives::Type as u8 => {
                         match cargs.len() {
                             0 => Ok(*lambda),
                             _ => {
-                                let r = try!(self.exec(&cargs[0], id));
+                                let r = try!(self.eval(&cargs[0], id));
                                 self.type_id(&r)
                             }
                         }
                     }
-                    t if t == Natives::Parse as u8 => {
+                    _ if t == Natives::Parse as u8 => {
                         match cargs.len() {
                             0 => Ok(*lambda),
                             _ => self.parse_ast(&cargs[0]),
                         }
                     }
-                    t if t == Natives::Exec as u8 => {
+                    _ if t == Natives::Eval as u8 => {
                         match cargs.len() {
                             0 => Ok(*lambda),
                             _ => {
-                                let r = try!(self.exec(&cargs[0], id));
-                                self.exec(&r, id)
+                                let r = try!(self.eval(&cargs[0], id));
+                                self.eval(&r, id)
                             }
                         }
                     }
-                    t if t == Natives::Debug as u8 => {
+                    _ if t == Natives::Debug as u8 => {
                         match cargs.len() {
                             0 => Ok(*lambda),
                             _ => {
@@ -249,7 +249,7 @@ impl Interpreter {
     }
 
     fn define(&mut self, key: u16, value: &AST, id: otree::Id) -> Result<ast::Id, ExecError> {
-        let v = try!(self.exec(value, id));
+        let v = try!(self.eval(value, id));
         let u = self.store(v);
         self.env.define(key, u);
         Ok(u)
@@ -273,10 +273,10 @@ impl Interpreter {
 
     pub fn run(&mut self, node: &AST) -> Result<AST, ExecError> {
         let id = self.env.last();
-        self.exec(node, id)
+        self.eval(node, id)
     }
 
-    fn exec(&mut self, node: &AST, id: otree::Id) -> Result<AST, ExecError> {
+    fn eval(&mut self, node: &AST, id: otree::Id) -> Result<AST, ExecError> {
         match *node {
             AST::Verb { kind: k, args: a } => {
                 if a.as_slice(&self.arena.ast).len() == 0 {
@@ -286,35 +286,35 @@ impl Interpreter {
                     '+' => {
                         let h = handle::into_raw(self);
                         let arg = a.as_slice(&handle::from_raw(h).arena.ast);
-                        let x = try!(handle::from_raw(h).exec(&arg[0], id));
-                        let y = try!(handle::from_raw(h).exec(&arg[1], id));
+                        let x = try!(handle::from_raw(h).eval(&arg[0], id));
+                        let y = try!(handle::from_raw(h).eval(&arg[1], id));
                         return handle::from_raw(h).add(&x, &y, id);
                     }
                     '-' => {
                         let h = handle::into_raw(self);
                         let arg = a.as_slice(&handle::from_raw(h).arena.ast);
-                        let x = try!(handle::from_raw(h).exec(&arg[0], id));
-                        let y = try!(handle::from_raw(h).exec(&arg[1], id));
+                        let x = try!(handle::from_raw(h).eval(&arg[0], id));
+                        let y = try!(handle::from_raw(h).eval(&arg[1], id));
                         return handle::from_raw(h).sub(&x, &y, id);
                     }
                     '*' => {
                         let h = handle::into_raw(self);
                         let arg = a.as_slice(&handle::from_raw(h).arena.ast);
-                        let x = try!(handle::from_raw(h).exec(&arg[0], id));
-                        let y = try!(handle::from_raw(h).exec(&arg[1], id));
+                        let x = try!(handle::from_raw(h).eval(&arg[0], id));
+                        let y = try!(handle::from_raw(h).eval(&arg[1], id));
                         return handle::from_raw(h).prod(&x, &y, id);
                     }
                     '=' => {
                         let h = handle::into_raw(self);
                         let arg = a.as_slice(&handle::from_raw(h).arena.ast);
-                        let x = try!(handle::from_raw(h).exec(&arg[0], id));
-                        let y = try!(handle::from_raw(h).exec(&arg[1], id));
+                        let x = try!(handle::from_raw(h).eval(&arg[0], id));
+                        let y = try!(handle::from_raw(h).eval(&arg[1], id));
                         return handle::from_raw(h).eq(&x, &y, id);
                     }
                     '.' => {
                         let h = handle::into_raw(self);
                         let x = try!(handle::from_raw(h)
-                            .exec(a.get(0, &handle::from_raw(h).arena.ast), id));
+                            .eval(a.get(0, &handle::from_raw(h).arena.ast), id));
                         match a.get(1, &handle::from_raw(h).arena.ast) {
                             &AST::List { curry: true, values: ref v } => {
                                 return handle::from_raw(h)
@@ -331,7 +331,7 @@ impl Interpreter {
                     '@' => {
                         let h = handle::into_raw(self);
                         let x = try!(handle::from_raw(h)
-                            .exec(a.get(0, &handle::from_raw(h).arena.ast), id));
+                            .eval(a.get(0, &handle::from_raw(h).arena.ast), id));
                         match a.get(1, &handle::from_raw(h).arena.ast) {
                             &AST::List { curry: true, values: ref v } => {
                                 return handle::from_raw(h)
@@ -355,12 +355,12 @@ impl Interpreter {
                                 })
                             }
                             1 => {
-                                let x = try!(handle::from_raw(h).exec(&arg[0], id));
+                                let x = try!(handle::from_raw(h).eval(&arg[0], id));
                                 Ok(ast::list(false, &mut handle::from_raw(h).arena.ast, vec![x]))
                             }
                             2 => {
-                                let x = try!(handle::from_raw(h).exec(&arg[0], id));
-                                let y = try!(handle::from_raw(h).exec(&arg[1], id));
+                                let x = try!(handle::from_raw(h).eval(&arg[0], id));
+                                let y = try!(handle::from_raw(h).eval(&arg[1], id));
                                 Ok(ast::list(false, &mut handle::from_raw(h).arena.ast, vec![x, y]))
                             }
                             _ => Err(ExecError::Rank),
@@ -373,7 +373,7 @@ impl Interpreter {
             AST::Nameref { name: n, value: v } => {
                 let h = handle::into_raw(self);
                 let a = handle::from_raw(h).arena.ast.deref(v);
-                let u = try!(handle::from_raw(h).exec(a, id));
+                let u = try!(handle::from_raw(h).eval(a, id));
                 let _ = try!(handle::from_raw(h).define(n, &u, id));
                 return Ok(u);
             }
@@ -385,7 +385,7 @@ impl Interpreter {
             AST::List { curry: c, values: v } => {
                 let (s1, s2) = handle::split(self);
                 for u in v.as_slice_mut(&mut s1.arena.ast) {
-                    *u = try!(s2.exec(u, id));
+                    *u = try!(s2.eval(u, id));
                 }
                 return Ok(AST::List {
                     curry: c,
@@ -395,7 +395,7 @@ impl Interpreter {
             AST::Sequence { values: v } => {
                 let (s1, s2) = handle::split(self);
                 for u in v.as_slice_mut(&mut s1.arena.ast) {
-                    *u = try!(s2.exec(u, id));
+                    *u = try!(s2.eval(u, id));
                 }
                 return Ok(*v.get(v.len() - 1, &s2.arena.ast));
             }            
@@ -412,7 +412,7 @@ impl Interpreter {
 enum Natives {
     Type,
     Parse,
-    Exec,
+    Eval,
     Debug,
 }
 
@@ -420,7 +420,7 @@ pub fn new() -> Interpreter {
     let mut arena = Arena::new();
     arena.add_native("type".to_string(), Natives::Type as u8);
     arena.add_native("parse".to_string(), Natives::Parse as u8);
-    arena.add_native("exec".to_string(), Natives::Exec as u8);
+    arena.add_native("eval".to_string(), Natives::Eval as u8);
     arena.add_native("debug".to_string(), Natives::Debug as u8);
     Interpreter {
         parser: parser::new(),
