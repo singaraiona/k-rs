@@ -216,7 +216,10 @@ impl Interpreter {
                     t if t == Natives::Exec as u8 => {
                         match cargs.len() {
                             0 => Ok(*lambda),
-                            _ => self.exec(&cargs[0], id),
+                            _ => {
+                                let r = try!(self.exec(&cargs[0], id));
+                                self.exec(&r, id)
+                            }
                         }
                     }
                     t if t == Natives::Debug as u8 => {
