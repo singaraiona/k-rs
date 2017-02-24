@@ -1,12 +1,13 @@
 use regex::Regex;
 use std::str::FromStr;
 use parse::error::Error;
+use std::str::pattern::{Pattern, ReverseSearcher};
 
 lazy_static! {
     // Tokens
     static ref TOKENS: Vec<Regex> = vec![r"^[01]+b",                               // 0 - BOOL
                                          r"^0x[a-zA-Z\d]+",                        // 1 - HEXLIT
-                                         r"^-?(0w|0N|\d+\.\d*|\d*\.?\d)",          // 2 - NUMBER
+                                         r"^-?(0w|0N|\d+\.\d*|\d*\.?\d)[a-z]?",    // 2 - NUMBER
                                          r"^[a-z][a-z\d]*",                        // 3 - NAME
                                          r"^`([a-zA-Z0-9.]*)?",                    // 4 - SYMBOL 
                                          r"^\x22(\\.|[^\x5C\x22])*\x22",           // 5 - STRING
@@ -84,6 +85,14 @@ impl Raw {
             Ok(t) => Ok(t),
             Err(_) => Err(Error::ParseError(format!("Can not parse type from {}", self.0))),
         }
+    }
+
+    pub fn trim_right_matches<'a, P>(&'a self, pat: P) -> Self
+        where P: Pattern<'a>,
+              P::Searcher: ReverseSearcher<'a>
+    {
+        let s = self.0.trim_right_matches(pat);
+        Raw(s.to_string())
     }
 
     pub fn len(&self) -> usize {

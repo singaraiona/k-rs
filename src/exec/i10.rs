@@ -8,6 +8,7 @@ use parse::vector::Vector;
 use exec::otree;
 use stacker;
 use handle;
+use std::i8::MAX;
 
 pub struct Interpreter {
     parser: Parser,
@@ -18,6 +19,24 @@ pub struct Interpreter {
 impl Interpreter {
     pub fn gc(&mut self) {
         self.env.clean();
+    }
+
+    fn type_id(&mut self, ast: &AST) -> Result<AST, ExecError> {
+        match ast.type_id() {
+            MAX => Err(ExecError::InvalidType),
+            t => Ok(AST::Int { value: t as i64 }),
+        }
+    }
+
+    pub fn parse_ast(&mut self, ast: &AST) -> Result<AST, ExecError> {
+        match *ast {
+            AST::String { value: s } => {
+                self.parser
+                    .parse_str(&s.to_string()[..], &mut self.arena)
+                    .map_err(|_| ExecError::InvalidNativeCall)
+            }
+            _ => Err(ExecError::InvalidNativeCall),
+        }
     }
 
     fn add(&mut self, left: &AST, right: &AST, id: otree::Id) -> Result<AST, ExecError> {
@@ -179,6 +198,41 @@ impl Interpreter {
                     s1.exec(u, e)
                 });
             }
+            &AST::Native { name: n } => {
+                let t = try!(self.arena.native_id_id(n).ok_or(ExecError::InvalidNativeCall));
+                return match t {
+                    t if t == Natives::Type as u8 => {
+                        match cargs.len() {
+                            0 => Ok(*lambda),
+                            _ => self.type_id(&cargs[0]),
+                        }
+                    }
+                    t if t == Natives::Parse as u8 => {
+                        match cargs.len() {
+                            0 => Ok(*lambda),
+                            _ => self.parse_ast(&cargs[0]),
+                        }
+                    }
+                    t if t == Natives::Exec as u8 => {
+                        match cargs.len() {
+                            0 => Ok(*lambda),
+                            _ => self.exec(&cargs[0], id),
+                        }
+                    }
+                    t if t == Natives::Debug as u8 => {
+                        match cargs.len() {
+                            0 => Ok(*lambda),
+                            _ => {
+                                // Must be way to find Id by &AST to avoid duplication of type
+                                // when we want to debug.
+                                let t = ast::atom(&mut self.arena.ast, cargs[0]);
+                                Ok(AST::Debug { value: t })
+                            }
+                        }
+                    }
+                    _ => Err(ExecError::InvalidNativeCall),
+                };
+            }
             _ => (),
         }
         Err(ExecError::Call)
@@ -338,7 +392,7 @@ impl Interpreter {
                     *u = try!(s2.exec(u, id));
                 }
                 return Ok(*v.get(v.len() - 1, &s2.arena.ast));
-            }
+            }            
             _ => return Ok(*node),
         };
     }
@@ -348,10 +402,23 @@ impl Interpreter {
     }
 }
 
+#[repr(u8)]
+enum Natives {
+    Type,
+    Parse,
+    Exec,
+    Debug,
+}
+
 pub fn new() -> Interpreter {
+    let mut arena = Arena::new();
+    arena.add_native("type".to_string(), Natives::Type as u8);
+    arena.add_native("parse".to_string(), Natives::Parse as u8);
+    arena.add_native("exec".to_string(), Natives::Exec as u8);
+    arena.add_native("debug".to_string(), Natives::Debug as u8);
     Interpreter {
         parser: parser::new(),
-        arena: Arena::new(),
+        arena: arena,
         env: Environment::new_root(),
     }
 }

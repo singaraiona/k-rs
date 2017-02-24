@@ -9,4 +9,7 @@ pub enum Error {
     Undefined,
     Stack,
     InvalidString,
+    NotImplemented,
+    InvalidType,
+    InvalidNativeCall,
 }

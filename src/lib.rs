@@ -5,6 +5,7 @@
 #![feature(slice_patterns)]
 #![feature(unboxed_closures)]
 #![feature(alloc)]
+#![feature(pattern)]
 
 #[macro_use]
 extern crate lazy_static;

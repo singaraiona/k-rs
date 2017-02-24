@@ -7,7 +7,6 @@ use parse::alloc::Arena;
 
 pub struct Parser {
     text: String,
-    natives: Vec<(String, AST)>,
 }
 
 macro_rules! extract {
@@ -50,6 +49,11 @@ impl Parser {
 
     pub fn parse(&mut self, b: &[u8], arena: &mut Arena) -> Result<AST, Error> {
         self.begin(str::from_utf8(b).expect("Invalid input."));
+        self.parse_list(arena, None)
+    }
+
+    pub fn parse_str(&mut self, s: &str, arena: &mut Arena) -> Result<AST, Error> {
+        self.begin(s);
         self.parse_list(arena, None)
     }
 
@@ -135,11 +139,6 @@ impl Parser {
     }
 
     #[inline]
-    fn native(&self, s: &String) -> Option<AST> {
-        self.natives.iter().find(|&x| *x.0 == *s).map(|ref x| x.1)
-    }
-
-    #[inline]
     fn parse_noun(&mut self, arena: &mut Arena) -> Result<AST, Error> {
         if self.matches(Token::Quit).is_some() {
             return Ok(AST::Quit);
@@ -184,7 +183,8 @@ impl Parser {
         if self.at(Token::Number) {
             let mut v: Vec<AST> = Vec::new();
             while self.at(Token::Number) {
-                let n = try!(self.expect(Token::Number));
+                let mut n = try!(self.expect(Token::Number));
+                n = n.trim_right_matches(|c| c == 'i' || c == 'f');
                 match n.parse::<i64>() {
                     Ok(x) => v.push(AST::Int { value: x }),
                     Err(_) => {
@@ -250,8 +250,8 @@ impl Parser {
         if self.at(Token::Name) {
             let n = try!(self.expect(Token::Name));
             let t = try!(n.parse::<String>());
-            if let Some(x) = self.native(&t) {
-                return self.applycallright(arena, x);
+            if let Some(x) = arena.native_id(&t) {
+                return self.applycallright(arena, AST::Native { name: x });
             }
             if self.matches(Token::Colon).is_some() {
                 let _ = self.matches(Token::Colon).is_some();
@@ -421,9 +421,5 @@ impl Parser {
 }
 
 pub fn new() -> Parser {
-    let natives = Vec::new();
-    Parser {
-        text: String::new(),
-        natives: natives,
-    }
+    Parser { text: String::new() }
 }

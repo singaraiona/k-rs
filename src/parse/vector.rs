@@ -112,7 +112,9 @@ pub struct VectorArenaIter<'a, T: 'a, A: 'a, I: 'a>
     phantom: PhantomData<*const T>,
 }
 
-impl<'a, T: 'a, A: 'a, I:Unsigned+ToPrimitive+FromPrimitive+Copy> Iterator for VectorArenaIter<'a, T, A, I> {
+impl<'a, T: 'a, A: 'a, I> Iterator for VectorArenaIter<'a, T, A, I>
+    where I: Unsigned + ToPrimitive + FromPrimitive + Copy
+{
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {

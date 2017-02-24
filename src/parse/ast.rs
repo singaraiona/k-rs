@@ -163,6 +163,7 @@ pub enum AST {
     Int { value: i64 },
     Float { value: f64 },
     Lambda { args: Args, body: Id },
+    Native { name: u16 },
     List {
         curry: bool,
         values: Vector<AST, Id>,
@@ -180,6 +181,7 @@ pub enum AST {
         right: Id,
     },
     Condition { list: Vector<AST, Id> },
+    Debug { value: Id },
     Quit,
     Nil,
 }
@@ -201,6 +203,15 @@ impl AST {
                 x.iter(&arena).fold(0, |a, ref i| a + i.find_names(arena, v))
             }
             _ => 0,
+        }
+    }
+
+    pub fn type_id(&self) -> i8 {
+        match *self {
+            AST::Int { .. } => -7,
+            AST::Float { .. } => -8,
+            AST::Symbol { .. } => -9,
+            _ => !0 as i8,
         }
     }
 
@@ -308,6 +319,8 @@ impl<'a> fmt::Display for Land<'a, AST> {
                        k,
                        Land(arena.ast.deref(r), arena))
             }
+            AST::Native { name: n } => write!(f, "-{}!", n),
+            AST::Debug { value: n } => write!(f, "{:#?}", arena.ast.deref(n)),
             AST::Nil => Ok(()),
             _ => write!(f, "nyi"),
         }
